@@ -11,7 +11,7 @@ If you need help, please post a topic in this  [user forum](http://forums.indigo
 
 ##Downloading for use
 
-If you are a user and just want to download and install the plugin, click on the "Download Zip" button to the right and it will download the plugin and readme file to a folder in your Downloads directory. Once it's downloaded just open that folder and double-click on the "DSC Alarm.indigoPlugin" file to have the client install and enable it for you.
+If you are a user and just want to download and install the plugin, click on the "Download Zip" button to the right and it will download the plugin and readme file to a folder named "DSC-Alarm-master" in your Downloads directory. Once it's downloaded just open that folder and double-click on the "DSC Alarm.indigoPlugin" file to have the client install and enable it for you.
 
 ##Contributing
 
