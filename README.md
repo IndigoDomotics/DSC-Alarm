@@ -4,7 +4,10 @@ This plugin interfaces Indigo to a DSC PowerSeries alarm system using one of the
 
 The plugin also maintains timers to keep track of how long any doors and windows have been opened, as well as how long it's been since it's seen activity in certain areas. These timers can be used to turn off the HVAC system if the wife is airing out the house, or turn off lights in areas of the house that aren't occupied.
 
-For more details, or for support, please visit the plugin's [forum](http://forums.indigodomo.com/viewtopic.php?f=56).
+##Information and Support
+For Installation and Information details please see this [forum post](http://forums.indigodomo.com/viewtopic.php?f=56&t=10287).
+
+If you need help, please post a topic in this  [user forum](http://forums.indigodomo.com/viewforum.php?f=56).
 
 ##Downloading for use
 
