@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<Events>
+
+    <Event id="armedAway" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Armed in Away Mode</Name>
+    </Event> 
+    <Event id="armedStay" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Armed in Stay Mode</Name>
+    </Event>     
+    <Event id="userArmed" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Armed by User Code</Name>
+        <ConfigUI>
+			<Field id="userCode" type="textfield">
+				<Label>User Code:</Label>
+			</Field>
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label1" type="label">
+				<Label>     HINT: Watch the log when arming to see the user code.</Label>
+			</Field>
+		</ConfigUI>
+    </Event>
+    
+    
+    <Event id="eventAlarmDisarmed" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Disarmed</Name>
+    </Event> 
+    <Event id="userDisarmed" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Disarmed by User Code</Name>
+        <ConfigUI>
+			<Field id="userCode" type="textfield">
+				<Label>User Code:</Label>
+			</Field>
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label1" type="label">
+				<Label>     HINT: Watch the log when disarming to see the user code.</Label>
+			</Field>
+		</ConfigUI>
+    </Event>
+    
+    
+    <Event id="eventFailToArm" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Failed to Arm</Name>
+    </Event>
+    
+    
+    <Event id="eventAlarmTripped" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Tripped</Name>
+    </Event> 
+
+
+	<Event id="eventNoticeAC_Trouble" deviceFilter="self.alarmKeypad">
+		<Name>Notice - AC Power Lost</Name>
+	</Event>
+	<Event id="eventNoticeAC_Restore" deviceFilter="self.alarmKeypad">
+		<Name>Notice - AC Power Restored</Name>
+	</Event>
+
+</Events>

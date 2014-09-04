@@ -1,0 +1,200 @@
+<?xml version="1.0"?>
+<PluginConfig>
+	<!-- You can add a SupportURL element inside here if you want a context
+		 sensitive help link on the config UI - otherwise it will just link
+		 to the URL specified in the Info.plist. -->
+	<!-- <SupportURL>http://www.frightideas.com</SupportURL> -->
+
+	<Field id="infoLabel" type="label">
+		<Label>DSC Alarm Plugin                                             Developed by Travis Cook</Label>
+	</Field>
+    <Field id="simpleSeparator1" type="separator"/>
+
+	<Field type="menu" id="configInterface" defaultValue="serial">
+		<Label>Select your Interface:</Label>
+		<List>
+			<Option value="serial">IT-100 or PC-5401</Option>
+			<Option value="twods">Envisalink 2DS or 3</Option>
+		</List>
+	</Field>
+
+	<!-- serial specific settings -->
+	<Field type="menu" id="serialPort" visibleBindingId="configInterface" visibleBindingValue="serial">
+		<Label>Serial Port:</Label>
+		<List class="indigo.serialPorts" filter="indigo.ignoreBluetooth" />
+	</Field>
+
+	<!-- 2DS specific settings -->
+
+	<Field id="TwoDS_Address" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods">
+		<Label>IP Address:</Label>
+	</Field>
+	<Field id="TwoDS_AddressLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>(ie. envisalink or 192.168.1.50)</Label>
+	</Field>
+
+	<Field id="TwoDS_Password" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods" secure="true">
+		<Label>Password:</Label>
+	</Field>
+	<Field id="snmpCommunityLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>(default = user)</Label>
+	</Field>
+
+	<Field id="space5" type="label">
+		<Label></Label>
+	</Field>
+
+	<Field id="code" type="textfield" defaultValue="1234" secure="true">
+		<Label>Disarm Code:</Label>
+	</Field>
+
+	<Field id="space2" type="label">
+		<Label></Label>
+	</Field>
+
+	<Field id="emailUrgentNote" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Enter an address and subject below to receive an email when the alarm is tripped.</Label>
+	</Field>
+	<Field id="emailUrgent" type="textfield">
+		<Label>Urgent Email:</Label>
+	</Field>
+	<Field id="emailUrgentSubject" type="textfield" defaultValue="Alarm Tripped" >
+		<Label>Urgent Email Subject:</Label>
+	</Field>
+	<!-- The setting below is for berkinet's use -->
+	<Field id="emailUrgentContent" type="textfield" hidden="true">
+		<Label>Urgent Email Content:</Label>
+	</Field>
+
+
+	<Field id="space7" type="label">
+		<Label></Label>
+	</Field>
+
+
+	<Field id="emailNoticeNote" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Enter an address and subject below to receive an email for plugin updates and less critical alarm events (Power Failure, Low Battery, Trouble, Faults).</Label>
+	</Field>
+	<!-- This is really the email text box for the updater but we'll share it this time -->
+	<Field id="updaterEmail" type="textfield">
+		<Label>Notice Email:</Label>
+	</Field>
+	<Field id="updaterEmailSubject" type="textfield" defaultValue="Alarm Notice">
+		<Label>Notice Email Subject:</Label>
+	</Field>
+
+	<!-- The setting below is for berkinet's use -->
+	<Field id="updaterEmailContent" type="textfield" hidden="true">
+		<Label>Notice Email Content:</Label>
+	</Field>
+	<Field id="space8" type="label">
+		<Label></Label>
+	</Field>
+
+
+	<Field id="syncTime" type="checkbox" defaultValue="true">
+		<Label>Sync Clock:</Label>
+	</Field>
+		<Field id="syncTimeNote" type="label" visibleBindingId="syncTime" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Indigo will update the alarm panel's time and date every night at 3am.</Label>
+	</Field>
+
+	<Field id="space9" type="label">
+		<Label></Label>
+	</Field>
+
+	<Field type="checkbox" id="speakingEnabled" defaultValue="false">
+		<Label>Enable Speaking:</Label>
+	</Field>
+	<Field id="note1" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Leave any of these blank to disable.</Label>
+	</Field>
+	<Field id="speakTextArming" type="textfield" defaultValue="The alarm will arm in 30 seconds." visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Exit Delay:</Label>
+	</Field>
+
+	<Field id="speakTextArmed" type="textfield" defaultValue="The alarm is now armed." visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Armed:</Label>
+	</Field>
+
+	<Field id="speakTextEntryDelay" type="textfield" defaultValue="Please enter your access code." visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Entry Delay:</Label>
+	</Field>
+
+	<Field id="speakTextDisarmed" type="textfield" defaultValue="The alarm is disarmed, welcome home." visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Disarmed:</Label>
+	</Field>
+
+	<Field id="note2" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>A list of offending zones will follow these two.</Label>
+	</Field>
+	<Field id="speakTextFailedToArm" type="textfield" defaultValue="The alarm cannot be armed." visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Failed To Arm:</Label>
+	</Field>
+
+	<Field id="speakTextTripped" type="textfield" defaultValue="Warning, intruder alert." visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Tripped:</Label>
+	</Field>
+
+	<Field id="space3" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label></Label>
+	</Field>
+
+	<Field type="checkbox" id="speakToVariableEnabled" defaultValue="false" visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Speak to Variable:</Label>
+	</Field>
+	<Field id="speakToVariableId" type="menu" visibleBindingId="speakToVariableEnabled" visibleBindingValue="true">
+		<Label></Label>
+		<List class="indigo.variables" filter="indigo.readWrite"/>
+	</Field>
+
+	<Field type="label" id="speakToHelp" fontColor="darkgray" fontSize="small" visibleBindingId="speakToVariableEnabled" visibleBindingValue="true" alignWithControl="true">
+		<Label>Select a variable above if you'd prefer to have the speak text put into the variable rather than be spoken by the Indigo server.</Label>
+	</Field>
+
+	<Field id="space4" type="label">
+		<Label></Label>
+	</Field>
+
+	<Field type="checkbox" id="createVariables" defaultValue="no" hidden="true">
+		<Label>Use variables:</Label>
+		<Description>(Useful for Conditions)</Description>
+	</Field>
+
+	<Field id="variableFolder" type="textfield" hidden="true"></Field>
+	<Field id="variableState" type="textfield" hidden="true"></Field>
+
+
+	<Field id="space6" type="label">
+		<Label></Label>
+	</Field>
+
+	<Field id="simpleSeparator2" type="separator"/>
+	<Field id="midLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Set the level of information recorded to the Indigo log.</Label>
+	</Field>
+
+	<Field id="showDebugInfo1" type="menu" defaultValue="1">
+		<Label>Logging level</Label>
+		<List>
+			<Option value="0">None</Option>
+			<Option value="1">Normal</Option>
+			<Option value="2">Verbose</Option>
+			<Option value="3">Debug</Option>
+			<Option value="4">Intense Debug</Option>
+		</List>
+	</Field>
+
+	<Field id="v0" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="0" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>No logging at all (not suggested)</Label>
+	</Field>
+	<Field id="v1" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="1" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Normal operating events</Label>
+	</Field>
+	<Field id="v2" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="2" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Detailed information</Label>
+	</Field>
+	<Field id="v3" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="3,4" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>If you are having problems with the plugin (or you are instructed by support), you can enable debugging Use with caution. This level is not suggested for regular operation.</Label>
+	</Field>
+</PluginConfig>

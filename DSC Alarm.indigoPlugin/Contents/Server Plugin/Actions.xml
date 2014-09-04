@@ -1,0 +1,121 @@
+<?xml version="1.0"?>
+<!-- If your plugin wants to add actions to the action step dialog that are independent
+	 of a device (devices define their own actions), define them here.
+-->
+<Actions>
+	<Action id="actionDisarm" deviceFilter="self.alarmKeypad">
+		<Name>Disarm Alarm</Name>
+		<CallbackMethod>methodDisarmAlarm</CallbackMethod>
+	</Action>
+	
+	<Action id="actionArmStay" deviceFilter="self.alarmKeypad">
+		<Name>Arm Alarm in Stay Mode</Name>
+		<CallbackMethod>methodArmStay</CallbackMethod>
+	</Action>
+	
+	<Action id="actionArmAway" deviceFilter="self.alarmKeypad">
+		<Name>Arm Alarm in Away Mode</Name>
+		<CallbackMethod>methodArmAway</CallbackMethod>
+	</Action>
+	
+	<Action id="actionPanicAlarm" deviceFilter="self.alarmKeypad">
+		<Name>Panic Alarm</Name>
+		<CallbackMethod>methodPanicAlarm</CallbackMethod>
+		<ConfigUI>
+			<Field type="menu" id="panicAlarmType" defaultValue="3">
+				<Label>Panic Type:</Label>
+				<List>
+					<Option value="3">Panic</Option>
+					<Option value="2">Ambulance</Option>
+					<Option value="1">Fire</Option>
+				</List>
+			</Field>
+		</ConfigUI>		
+	</Action>
+	
+	
+	<Action id="actionSendKeypress" deviceFilter="self.alarmKeypad">
+		<Name>Send Keypress</Name>
+		<CallbackMethod>methodSendKeypress</CallbackMethod>
+		<ConfigUI>
+			<Field type="textfield" id="keys">
+				<Label>Key(s) To Press:</Label>
+			</Field>
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label1" type="label">
+				<Label>Special Keys:</Label>
+			</Field>
+			<Field id="label2" type="label">
+				<Label>     Displayed as: Actual Keypad Key (keypress code)</Label>
+			</Field>
+			<Field id="label3" type="label">
+				<Label>     Function Keys: 1(a), 2(b), 3(c), 4(d), 5(e)</Label>
+			</Field>
+			<Field id="label4" type="label">
+				<Label>     Arrow Keys: Left(&lt;), Right(&gt;), Both(=)</Label>
+			</Field>
+			<Field id="label5" type="label">
+				<Label>     Panic Keys: Fire(F), Ambulance(A), Panic(P)</Label>
+			</Field>
+			<Field id="label6" type="label">
+				<Label>     Long Keypress: Key followed by L.  ie. '2L' to hold 2.</Label>
+			</Field>	
+			<Field id="space1" type="label"><Label/></Field>
+			<Field id="label8" type="label">
+				<Label>Example:</Label>
+			</Field>
+			<Field id="labelexample" type="label">
+				<Label>     b236&gt; would press function key 2, digits 236, right arrow.</Label>
+			</Field>
+		</ConfigUI>		
+	</Action>
+	
+	<!--
+	<Action id="actionSyncTime" deviceFilter="self.alarmKeypad">
+		<Name>Sync Date/Time with Indigo</Name>
+		<CallbackMethod>methodSyncTime</CallbackMethod>
+		<ConfigUI>
+			<Field id="label1" type="label">
+				<Label>This sets the time and date on the alarm to be the same as the Indigo host computer.  Run this once every night sometime after 2AM to automatically adjust for Daylight Savings Time and to make sure the clock is kept accurate.</Label>
+			</Field>
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label2" type="label">
+				<Label>NOTE: After executing this action it will take a few minutes for the new time to be reflected on your alarm keypads.</Label>
+			</Field>
+		</ConfigUI>		
+	</Action>
+	-->
+	
+	<Action id="actionAdjustThermostat" deviceFilter="self.alarmTemp">
+		<Name>Adjust Thermostat</Name>
+		<CallbackMethod>methodAdjustThermostat</CallbackMethod>
+		<ConfigUI>
+			<Field type="menu" id="thermoAdjustWhich" defaultValue="h">
+				<Label></Label>
+				<List>
+					<Option value="h">Heat Setpoint</Option>
+					<Option value="C">Cool Setpoint</Option>
+				</List>
+			</Field>
+			<Field type="menu" id="thermoAdjustmentType" defaultValue="+">
+				<Label></Label>
+				<List>
+					<Option value="+">Increment by 1</Option>
+					<Option value="-">Decrement by 1</Option>
+					<Option value="=">Set to ...</Option>
+				</List>
+			</Field>
+			<Field type="textfield" id="thermoSetPoint" visibleBindingId="thermoAdjustmentType" visibleBindingValue="=">
+				<Label>Temperature:</Label>
+			</Field>
+		</ConfigUI>		
+	</Action>
+	
+<Action id="actionResetZoneGroupTimer" deviceFilter="self.alarmZoneGroup">
+	<Name>Reset Zone Group Timer</Name>
+	<CallbackMethod>methodResetZoneGroupTimer</CallbackMethod>
+</Action>
+	
+</Actions>
+
+

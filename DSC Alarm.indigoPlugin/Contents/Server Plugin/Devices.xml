@@ -1,0 +1,249 @@
+<?xml version="1.0"?>
+<Devices>
+	<Device type="custom" id="alarmZone">
+		<Name>Alarm Zone</Name>
+		<ConfigUI>			
+			<Field id="zoneNumber" type="menu">
+				<Label>Zone Number:</Label>
+				<List class="self" method="getZoneList"/>
+			</Field>
+			
+			<Field id="space0" type="label">
+				<Label></Label>
+			</Field>
+			
+			￼<Field type="menu" id="zoneType" defaultValue="zoneTypeDoor">
+				<Label>Zone Type:</Label>
+				<List>
+					<Option value="zoneTypeDoor">Door</Option>
+					<Option value="zoneTypeWindow">Window</Option>
+					<Option value="zoneTypeMotion">Motion</Option>
+					<Option value="zoneTypeOther">Other</Option>
+				</List>
+			</Field>
+			<Field id="zoneTypeHint" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+				<Label>The Zone Type has no effect at the moment.  It may be used in the future.</Label>
+			</Field>
+			
+			<Field id="space1" type="label">
+				<Label></Label>
+			</Field>
+			
+			<Field type="checkbox" id="zoneLogChanges" defaultValue="1">
+				<Label>Log Changes:</Label>
+				<Description></Description>
+			</Field>
+		</ConfigUI>
+		
+		<UiDisplayStateId>state</UiDisplayStateId>
+		<States>
+			<State id="state">
+				<ValueType>
+					<List>
+						<Option value="open">Open</Option>
+						<Option value="closed">Closed</Option>
+						<Option value="tripped">Tripped</Option>						
+					</List>
+				</ValueType>
+				<TriggerLabel>Zone State Changed</TriggerLabel>
+				<TriggerLabelPrefix>Zone State Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current State</ControlPageLabel>
+				<ControlPageLabelPrefix>State is</ControlPageLabelPrefix>
+			</State>
+			<State id="LastChangedShort">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Last Changed Short State Changed</TriggerLabel>
+				<ControlPageLabel>Last Changed Short State</ControlPageLabel>
+			</State>			
+			<State id="LastChangedTimer">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Last Changed Timer Changed</TriggerLabel>
+				<TriggerLabelPrefix>Last Changed Timer Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Last Changed Timer</ControlPageLabel>
+        		<ControlPageLabelPrefix>Last Changed Timer is</ControlPageLabelPrefix>
+			</State>
+
+		</States>
+	</Device>
+	
+	<Device type="custom" id="alarmKeypad">
+		<Name>Alarm Keypad</Name>
+		<ConfigUI>			
+			<Field id="partitionNumber" type="menu">
+				<Label>Partition Number:</Label>
+				<List>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+				</List>	
+			</Field>
+			<Field id="note1" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+				<Label>Only Partition 1 is currently supported.</Label>
+			</Field>
+		</ConfigUI>
+		
+		<UiDisplayStateId>state</UiDisplayStateId>
+		<States>
+			<State id="state">
+				<ValueType>
+					<List>
+						<Option value="disarmed">Disarmed</Option>
+						<Option value="exitDelay">Exit Delay</Option>
+						<Option value="armed">Armed</Option>
+						<Option value="entryDelay">Entry Delay</Option>
+						<Option value="tripped">Tripped</Option>						
+					</List>
+				</ValueType>
+				<TriggerLabel>Alarm State Changed</TriggerLabel>
+				<TriggerLabelPrefix>Alarm State Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current State</ControlPageLabel>
+				<ControlPageLabelPrefix>State is</ControlPageLabelPrefix>
+			</State>
+			<State id="ArmedState">
+				<ValueType>
+					<List>
+						<Option value="disarmed">Disarmed</Option>
+						<Option value="stay">Armed Stay</Option>
+						<Option value="away">Armed Away</Option>						
+					</List>
+				</ValueType>
+				<TriggerLabel>Armed State Changed</TriggerLabel>
+				<TriggerLabelPrefix>Armed State Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current Armed State</ControlPageLabel>
+				<ControlPageLabelPrefix>Armed State is</ControlPageLabelPrefix>
+			</State>			
+			<State id="KeypadChime">
+				<ValueType>
+					<List>
+						<Option value="enabled">Enabled</Option>
+						<Option value="disabled">Disabled</Option>					
+					</List>
+				</ValueType>
+				<TriggerLabel>Keypad Chime Changed</TriggerLabel>
+				<TriggerLabelPrefix>Keypad Chime Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Keypad Chime</ControlPageLabel>
+				<ControlPageLabelPrefix>Keypad Chime is</ControlPageLabelPrefix>
+			</State>
+			<State id="LCDLine1">
+				<ValueType>String</ValueType>
+				<TriggerLabel>LCD Line 1</TriggerLabel>
+				<ControlPageLabel>LCD Line 1</ControlPageLabel>
+			</State>
+			<State id="LCDLine2">
+				<ValueType>String</ValueType>
+				<TriggerLabel>LCD Line 2</TriggerLabel>
+				<ControlPageLabel>LCD Line 2</ControlPageLabel>
+			</State>	
+			<State id="LEDReady">
+				<ValueType boolType="OnOff">Boolean</ValueType>
+				<TriggerLabel>Ready LED</TriggerLabel>
+				<ControlPageLabel>Ready LED</ControlPageLabel>
+			</State>
+			<State id="LEDArmed">
+				<ValueType boolType="OnOff">Boolean</ValueType>
+				<TriggerLabel>Armed LED</TriggerLabel>
+				<ControlPageLabel>Armed LED</ControlPageLabel>
+			</State>
+			<State id="LEDTrouble">
+				<ValueType boolType="OnOff">Boolean</ValueType>
+				<TriggerLabel>Trouble LED</TriggerLabel>
+				<ControlPageLabel>Trouble LED</ControlPageLabel>
+			</State>			
+		</States>
+	</Device>
+	
+
+	<Device type="custom" id="alarmZoneGroup">
+		<Name>Alarm Zone Group</Name>
+		<ConfigUI>	
+			<Field id="note1" type="label" fontColor="darkgray" alignWithControl="true">
+				<Label>Hold the Command key to select multiple zones.</Label>
+			</Field>		
+			<Field id='devList' type='list' rows="10">
+				<Label>Group Zones:</Label>
+				<List class="self" method="getZoneDevices"/>
+			</Field>
+
+		</ConfigUI>
+		
+		<UiDisplayStateId>state</UiDisplayStateId>
+		<States>
+			<State id="state">
+				<ValueType>
+					<List>
+						<Option value="zoneOpen">A Member Zone Is Open</Option>
+						<Option value="allZonesClosed">All Zones Closed</Option>
+						<Option value="zoneTripped">A Member Zone Is Tripped</Option>						
+					</List>
+				</ValueType>
+				<TriggerLabel>Zone Group State Changed</TriggerLabel>
+				<TriggerLabelPrefix>Zone Group State Changed to:</TriggerLabelPrefix>
+				<ControlPageLabel>Current Group State</ControlPageLabel>
+				<ControlPageLabelPrefix>Group State is</ControlPageLabelPrefix>
+			</State>		
+			<State id="AnyMemberLastChangedTimer">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Minutes Since Any Zone's State Changed ...</TriggerLabel>
+				<TriggerLabelPrefix>Any Zone Member Changed Timer is</TriggerLabelPrefix>
+				<ControlPageLabel>Any Zone Member Changed Timer</ControlPageLabel>
+        		<ControlPageLabelPrefix>Any Zone Member Changed Timer is</ControlPageLabelPrefix>
+			</State>
+			<State id="EntireGroupLastChangedTimer">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Minutes Since Group's State Changed ...</TriggerLabel>
+				<TriggerLabelPrefix>Entire Group Changed Timer is</TriggerLabelPrefix>
+				<ControlPageLabel>Zone Group Timer</ControlPageLabel>
+        		<ControlPageLabelPrefix>Zone Group Timer is</ControlPageLabelPrefix>
+			</State>			
+		</States>
+		
+	</Device>
+	
+	
+	<Device type="custom" id="alarmTemp">
+		<Name>DSC Thermostat</Name>
+		<ConfigUI>			
+			<Field id="sensorNumber" type="menu">
+				<Label>Thermostat #:</Label>
+				<List>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+					<Option value="4">4</Option>
+				</List>	
+			</Field>
+			
+			<Field id="space0" type="label">
+				<Label></Label>
+			</Field>
+			
+			<Field type="checkbox" id="zoneLogChanges" defaultValue="1">
+				<Label>Log Changes:</Label>
+				<Description></Description>
+			</Field>
+		</ConfigUI>
+		
+		<UiDisplayStateId>temperatureInside</UiDisplayStateId>
+		<States>
+			<State id="temperatureInside">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Temperature Inside</TriggerLabel>
+				<ControlPageLabel>Temperature Inside</ControlPageLabel>
+			</State>
+			<State id="temperatureOutside">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Temperature Outside</TriggerLabel>
+				<ControlPageLabel>Temperature Outside</ControlPageLabel>
+			</State>
+			<State id="setPointCool">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Set Point Cool</TriggerLabel>
+				<ControlPageLabel>Set Point Cool</ControlPageLabel>
+			</State>
+			<State id="setPointHeat">
+				<ValueType>Integer</ValueType>
+				<TriggerLabel>Set Point Heat</TriggerLabel>
+				<ControlPageLabel>Set Point Heat</ControlPageLabel>
+			</State>
+		</States>
+	</Device>
+</Devices>
