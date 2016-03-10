@@ -11,17 +11,17 @@ import indigo
 #
 #	1. 	Create an instance.  It will check the pluginPrefs for the showDebugInfo1
 #		log level setting.
-#			self.logger = indigoPluginUtils.logger(self)
+#			self.mylogger = indigoPluginUtils.logger(self)
 #
 #	2.	Log like so.  The first argument is the log level, second is the log.
 #		It will only log the message if the message's log level is <= logLevel.
-#		self.logger.log(1, "Bla bla")
+#		self.mylogger.log(1, "Bla bla")
 #
 #	3.  To log errors:
-#		self.logger.logError("Oops, error")
+#		self.mylogger.logError("Oops, error")
 #
 #	4.  To read the loggers log level in the plugin:
-#		logLevel = self.logger.logLevel
+#		logLevel = self.mylogger.logLevel
 #
 
 
@@ -32,9 +32,7 @@ class logger(object):
 		self.logLevel = None
 		self.readConfig()
 
-
 	def readConfig(self):
-
 		kLogLevelList = ['None', 'Normal', 'Verbose', 'Debug', 'Intense Debug']
 
 		# Save current log level
@@ -59,14 +57,12 @@ class logger(object):
 		elif oldLevel != self.logLevel:
 			self.log(1, "Log level preferences changed to \"%s\"." % kLogLevelList[self.logLevel])
 
-
 	def log(self, level, logMsg):
 		if level <= self.logLevel:
 			if level < 3:
 				indigo.server.log(logMsg)
 			else:
 				self.plugin.debugLog(logMsg)
-
 
 	def logError(self, logMsg):
 		indigo.server.log(logMsg, isError=True)
