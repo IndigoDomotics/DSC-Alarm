@@ -22,10 +22,28 @@
 				</List>
 			</Field>
 			<Field id="zoneTypeHint" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-				<Label>The Zone Type has no effect at the moment.  It may be used in the future.</Label>
+				<Label>The Zone Type has no effect at the moment.</Label>
 			</Field>
 			
 			<Field id="space1" type="label">
+				<Label></Label>
+			</Field>
+			
+			<Field id="zonePartition" type="menu" defaultValue="1">
+				<Label>Partition Number:</Label>
+				<List>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+					<Option value="4">4</Option>
+					<Option value="5">5</Option>
+					<Option value="6">6</Option>
+					<Option value="7">7</Option>
+					<Option value="8">8</Option>
+				</List>	
+			</Field>
+
+			<Field id="space2" type="label">
 				<Label></Label>
 			</Field>
 			
@@ -50,6 +68,18 @@
 				<ControlPageLabel>Current State</ControlPageLabel>
 				<ControlPageLabelPrefix>State is</ControlPageLabelPrefix>
 			</State>
+			<State id="bypass">
+				<ValueType>
+					<List>
+						<Option value="nobypass">No Bypass</Option>
+						<Option value="bypassed">Bypassed</Option>
+					</List>
+				</ValueType>
+				<TriggerLabel>Zone Bypass Changed</TriggerLabel>
+				<TriggerLabelPrefix>Zone Bypass Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current Bypass State</ControlPageLabel>
+				<ControlPageLabelPrefix>Bypass State is</ControlPageLabelPrefix>
+			</State>
 			<State id="LastChangedShort">
 				<ValueType>String</ValueType>
 				<TriggerLabel>Last Changed Short State Changed</TriggerLabel>
@@ -57,9 +87,9 @@
 			</State>			
 			<State id="LastChangedTimer">
 				<ValueType>Integer</ValueType>
-				<TriggerLabel>Last Changed Timer Changed</TriggerLabel>
+				<TriggerLabel>Last Changed Timer (mins.) Changed</TriggerLabel>
 				<TriggerLabelPrefix>Last Changed Timer Changed to</TriggerLabelPrefix>
-				<ControlPageLabel>Last Changed Timer</ControlPageLabel>
+				<ControlPageLabel>Last Changed Timer (mins.)</ControlPageLabel>
         		<ControlPageLabelPrefix>Last Changed Timer is</ControlPageLabelPrefix>
 			</State>
 
@@ -69,15 +99,24 @@
 	<Device type="custom" id="alarmKeypad">
 		<Name>Alarm Keypad</Name>
 		<ConfigUI>			
+			<Field type="textfield" id="partitionName">
+				<Label>Partition Name:</Label>
+			</Field>			
+			<Field id="space0" type="label">
+				<Label></Label>
+			</Field>
 			<Field id="partitionNumber" type="menu">
 				<Label>Partition Number:</Label>
 				<List>
 					<Option value="1">1</Option>
 					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+					<Option value="4">4</Option>
+					<Option value="5">5</Option>
+					<Option value="6">6</Option>
+					<Option value="7">7</Option>
+					<Option value="8">8</Option>
 				</List>	
-			</Field>
-			<Field id="note1" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-				<Label>Only Partition 1 is currently supported.</Label>
 			</Field>
 		</ConfigUI>
 		
@@ -98,6 +137,21 @@
 				<ControlPageLabel>Current State</ControlPageLabel>
 				<ControlPageLabelPrefix>State is</ControlPageLabelPrefix>
 			</State>
+			<State id="PanicState">
+				<ValueType>
+					<List>
+						<Option value="none">None</Option>
+						<Option value="fire">Fire</Option>
+						<Option value="ambulance">Ambulance</Option>
+						<Option value="panic">Police</Option>
+						<Option value="duress">Duress</Option>						
+					</List>
+				</ValueType>
+				<TriggerLabel>Panic State Changed</TriggerLabel>
+				<TriggerLabelPrefix>Panic State Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current Panic State</ControlPageLabel>
+				<ControlPageLabelPrefix>Panic State is</ControlPageLabelPrefix>
+			</State>
 			<State id="ArmedState">
 				<ValueType>
 					<List>
@@ -110,6 +164,18 @@
 				<TriggerLabelPrefix>Armed State Changed to</TriggerLabelPrefix>
 				<ControlPageLabel>Current Armed State</ControlPageLabel>
 				<ControlPageLabelPrefix>Armed State is</ControlPageLabelPrefix>
+			</State>			
+			<State id="ReadyState">
+				<ValueType>
+					<List>
+						<Option value="ready">Ready</Option>
+						<Option value="notready">Not Ready</Option>						
+					</List>
+				</ValueType>
+				<TriggerLabel>Ready State Changed</TriggerLabel>
+				<TriggerLabelPrefix>Ready State Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current Ready State</ControlPageLabel>
+				<ControlPageLabelPrefix>Ready State is</ControlPageLabelPrefix>
 			</State>			
 			<State id="KeypadChime">
 				<ValueType>
@@ -148,6 +214,16 @@
 				<TriggerLabel>Trouble LED</TriggerLabel>
 				<ControlPageLabel>Trouble LED</ControlPageLabel>
 			</State>			
+			<State id="LEDMemory">
+				<ValueType boolType="OnOff">Boolean</ValueType>
+				<TriggerLabel>Memory LED</TriggerLabel>
+				<ControlPageLabel>Memory LED</ControlPageLabel>
+			</State>			
+			<State id="LEDBypass">
+				<ValueType boolType="OnOff">Boolean</ValueType>
+				<TriggerLabel>Bypass LED</TriggerLabel>
+				<ControlPageLabel>Bypass LED</ControlPageLabel>
+			</State>			
 		</States>
 	</Device>
 	
@@ -156,7 +232,7 @@
 		<Name>Alarm Zone Group</Name>
 		<ConfigUI>	
 			<Field id="note1" type="label" fontColor="darkgray" alignWithControl="true">
-				<Label>Hold the Command key to select multiple zones.</Label>
+				<Label>Hold the Command Key to Select Multiple Zones.</Label>
 			</Field>		
 			<Field id='devList' type='list' rows="10">
 				<Label>Group Zones:</Label>

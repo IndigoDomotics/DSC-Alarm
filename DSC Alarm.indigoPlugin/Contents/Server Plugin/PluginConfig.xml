@@ -6,7 +6,7 @@
 	<!-- <SupportURL>http://www.frightideas.com</SupportURL> -->
 
 	<Field id="infoLabel" type="label">
-		<Label>DSC Alarm Plugin                                             Developed by Travis Cook</Label>
+		<Label>DSC Alarm Plugin:   Developed by Travis Cook; modified by Monstergerm</Label>
 	</Field>
     <Field id="simpleSeparator1" type="separator"/>
 
@@ -14,7 +14,7 @@
 		<Label>Select your Interface:</Label>
 		<List>
 			<Option value="serial">IT-100 or PC-5401</Option>
-			<Option value="twods">Envisalink 2DS or 3</Option>
+			<Option value="twods">Envisalink 2DS, 3 or 4</Option>
 		</List>
 	</Field>
 
@@ -30,14 +30,14 @@
 		<Label>IP Address:</Label>
 	</Field>
 	<Field id="TwoDS_AddressLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>(ie. envisalink or 192.168.1.50)</Label>
+		<Label>(i.e. envisalink or 192.168.1.50; fixed IP is preferred)</Label>
 	</Field>
 
 	<Field id="TwoDS_Password" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods" secure="true">
 		<Label>Password:</Label>
 	</Field>
 	<Field id="snmpCommunityLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>(default = user)</Label>
+		<Label>(default = user; max. 6 char.; except EVL-4 10 char.)</Label>
 	</Field>
 
 	<Field id="space5" type="label">
@@ -48,12 +48,12 @@
 		<Label>Disarm Code:</Label>
 	</Field>
 
-	<Field id="space2" type="label">
-		<Label></Label>
-	</Field>
+	<Field
+		id = "separator00" 
+		type = "separator"/>
 
 	<Field id="emailUrgentNote" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Enter an address and subject below to receive an email when the alarm is tripped.</Label>
+		<Label>Enter an address and subject below to receive an email when the alarm is tripped or panic/duress is triggered. Separate multiple email addresses with ;</Label>
 	</Field>
 	<Field id="emailUrgent" type="textfield">
 		<Label>Urgent Email:</Label>
@@ -87,10 +87,10 @@
 	<Field id="updaterEmailContent" type="textfield" hidden="true">
 		<Label>Notice Email Content:</Label>
 	</Field>
-	<Field id="space8" type="label">
-		<Label></Label>
-	</Field>
 
+	<Field
+		id = "separator01" 
+		type = "separator"/>
 
 	<Field id="syncTime" type="checkbox" defaultValue="true">
 		<Label>Sync Clock:</Label>
@@ -99,16 +99,75 @@
 		<Label>Indigo will update the alarm panel's time and date every night at 3am.</Label>
 	</Field>
 
-	<Field id="space9" type="label">
-		<Label></Label>
+	<Field
+		id = "separator02" 
+		type = "separator"/>
+
+	<Field
+		id = "userCodeLabeling" 
+		type = "checkbox">
+		<Label>User Code Labeling:</Label>
+		<Description>Show/Hide</Description>
 	</Field>
 
-	<Field type="checkbox" id="speakingEnabled" defaultValue="false">
+	<Field
+		id = "note0" 
+		type = "label"
+		fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Assign each user code a label.</Label>
+	</Field>
+
+	<Field
+		id = "userCode" 
+		type = "textfield" 
+		defaultValue = "40" 
+		visibleBindingId = "userCodeLabeling"
+		visibleBindingValue = "true"
+		tooltip = "Enter 2-digit user code. Watch the log for codes.">
+		<Label>User Code:</Label>
+	</Field>
+	
+	<Field id="note1" type="label" visibleBindingId = "userCodeLabeling" visibleBindingValue = "true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Enter multiple user codes separated by comma without spaces.</Label>
+	</Field>
+
+	<Field
+		id = "userLabel" 
+		type = "textfield" 
+		defaultValue = "Master"
+		visibleBindingId = "userCodeLabeling"
+		visibleBindingValue = "true"
+		tooltip = "Please enter a user code label.">
+		<Label>User Label:</Label>
+	</Field>
+
+	<Field id="note2" type="label" visibleBindingId = "userCodeLabeling" visibleBindingValue = "true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Enter multiple user labels in order matching user codes, separated by comma without spaces.</Label>
+	</Field>
+
+	<Field
+		id = "separator03" 
+		type = "separator"/>
+
+	<Field id="note5" type="label" alignWithControl="false">
+		<Label>       Speak and Speak</Label>
+	</Field>
+
+	<Field
+		id = "speakandspeaktovariable" 
+		type = "checkbox">
+		<Label>to Variable Setup:</Label>
+		<Description>Show/Hide</Description>
+	</Field>
+
+	<Field type="checkbox" id="speakingEnabled" defaultValue="false" visibleBindingId="speakandspeaktovariable" visibleBindingValue="true">
 		<Label>Enable Speaking:</Label>
 	</Field>
-	<Field id="note1" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+	
+	<Field id="note3" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
 		<Label>Leave any of these blank to disable.</Label>
 	</Field>
+	
 	<Field id="speakTextArming" type="textfield" defaultValue="The alarm will arm in 30 seconds." visibleBindingId="speakingEnabled" visibleBindingValue="true">
 		<Label>Exit Delay:</Label>
 	</Field>
@@ -125,15 +184,20 @@
 		<Label>Disarmed:</Label>
 	</Field>
 
-	<Field id="note2" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+	<Field id="note4" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
 		<Label>A list of offending zones will follow these two.</Label>
 	</Field>
+	
 	<Field id="speakTextFailedToArm" type="textfield" defaultValue="The alarm cannot be armed." visibleBindingId="speakingEnabled" visibleBindingValue="true">
 		<Label>Failed To Arm:</Label>
 	</Field>
 
 	<Field id="speakTextTripped" type="textfield" defaultValue="Warning, intruder alert." visibleBindingId="speakingEnabled" visibleBindingValue="true">
 		<Label>Tripped:</Label>
+	</Field>
+
+	<Field id="speakTextPanic" type="textfield" defaultValue="Warning, panic alert." visibleBindingId="speakingEnabled" visibleBindingValue="true">
+		<Label>Panic:</Label>
 	</Field>
 
 	<Field id="space3" type="label" visibleBindingId="speakingEnabled" visibleBindingValue="true">
@@ -143,16 +207,17 @@
 	<Field type="checkbox" id="speakToVariableEnabled" defaultValue="false" visibleBindingId="speakingEnabled" visibleBindingValue="true">
 		<Label>Speak to Variable:</Label>
 	</Field>
+	
 	<Field id="speakToVariableId" type="menu" visibleBindingId="speakToVariableEnabled" visibleBindingValue="true">
 		<Label></Label>
 		<List class="indigo.variables" filter="indigo.readWrite"/>
 	</Field>
 
 	<Field type="label" id="speakToHelp" fontColor="darkgray" fontSize="small" visibleBindingId="speakToVariableEnabled" visibleBindingValue="true" alignWithControl="true">
-		<Label>Select a variable above if you'd prefer to have the speak text put into the variable rather than be spoken by the Indigo server.</Label>
+		<Label>Select a variable above (e.g. DSCalarmText) if you'd prefer to have the speak text put into the variable rather than be spoken by the Indigo server. Useful for sending alarm notices in Indigo actions.</Label>
 	</Field>
 
-	<Field id="space4" type="label">
+	<Field id="space4" type="label" hidden="true">
 		<Label></Label>
 	</Field>
 
@@ -164,10 +229,6 @@
 	<Field id="variableFolder" type="textfield" hidden="true"></Field>
 	<Field id="variableState" type="textfield" hidden="true"></Field>
 
-
-	<Field id="space6" type="label">
-		<Label></Label>
-	</Field>
 
 	<Field id="simpleSeparator2" type="separator"/>
 	<Field id="midLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">

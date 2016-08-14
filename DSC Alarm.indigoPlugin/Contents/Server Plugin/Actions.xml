@@ -18,13 +18,19 @@
 		<CallbackMethod>methodArmAway</CallbackMethod>
 	</Action>
 	
+	<Action id="actionArmGlobal" deviceFilter="self.alarmKeypad">
+		<Name>Arm Alarm in Away Global Mode</Name>
+		<CallbackMethod>methodArmGlobal</CallbackMethod>
+	</Action>
+	
 	<Action id="actionPanicAlarm" deviceFilter="self.alarmKeypad">
 		<Name>Panic Alarm</Name>
 		<CallbackMethod>methodPanicAlarm</CallbackMethod>
 		<ConfigUI>
-			<Field type="menu" id="panicAlarmType" defaultValue="3">
+			<Field type="menu" id="panicAlarmType" defaultValue="4">
 				<Label>Panic Type:</Label>
 				<List>
+					<Option value="4">Duress</Option>
 					<Option value="3">Panic</Option>
 					<Option value="2">Ambulance</Option>
 					<Option value="1">Fire</Option>
@@ -41,6 +47,9 @@
 			<Field type="textfield" id="keys">
 				<Label>Key(s) To Press:</Label>
 			</Field>
+			<Field id="label6" type="label">
+				<Label>     These are Partition(device)-specific Cmd 071 keypresses: up to 6 keystrokes, last one # to accept by keypad.</Label>
+			</Field>	
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label1" type="label">
 				<Label>Special Keys:</Label>
@@ -57,17 +66,71 @@
 			<Field id="label5" type="label">
 				<Label>     Panic Keys: Fire(F), Ambulance(A), Panic(P)</Label>
 			</Field>
-			<Field id="label6" type="label">
-				<Label>     Long Keypress: Key followed by L.  ie. '2L' to hold 2.</Label>
-			</Field>	
 			<Field id="space1" type="label"><Label/></Field>
 			<Field id="label8" type="label">
 				<Label>Example:</Label>
 			</Field>
-			<Field id="labelexample" type="label">
-				<Label>     b236&gt; would press function key 2, digits 236, right arrow.</Label>
+			<Field id="label9" type="label">
+				<Label>     *124#  would bypass zone 24 in the selected partition. Only disarmed partitions can be bypassed.</Label>
+			</Field>
+			<Field id="label10" type="label">
+				<Label>     b236&gt;  would press function key 2, digits 236, right arrow. Might not work with Envisalink.</Label>
 			</Field>
 		</ConfigUI>		
+	</Action>
+	
+	<Action id="actionSendKeypressVariable" deviceFilter="self.alarmKeypad">
+		<Name>Send Keypress Variable</Name>
+		<CallbackMethod>methodSendKeypressVariable</CallbackMethod>
+		<ConfigUI>
+			<Field id="label1" type="label">
+				<Label>Instructions:</Label>
+			</Field>
+			<Field id="label2" type="label">
+				<Label>     Enter command into variable named DSCcommand. These are Cmd 071 keypresses: Partition number plus up to 6 keystrokes, last one # to accept by keypad. </Label>
+			</Field>	
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label3" type="label">
+				<Label>Special Keys:</Label>
+			</Field>
+			<Field id="label4" type="label">
+				<Label>     Displayed as: Actual Keypad Key (keypress code)</Label>
+			</Field>
+			<Field id="label5" type="label">
+				<Label>     Function Keys: 1(a), 2(b), 3(c), 4(d), 5(e)</Label>
+			</Field>
+			<Field id="label6" type="label">
+				<Label>     Arrow Keys: Left(&lt;), Right(&gt;), Both(=)</Label>
+			</Field>
+			<Field id="label7" type="label">
+				<Label>     Panic Keys: Fire(F), Ambulance(A), Panic(P)</Label>
+			</Field>
+			<Field id="space1" type="label"><Label/></Field>
+			<Field id="label8" type="label">
+				<Label>Example:</Label>
+			</Field>
+			<Field id="label9" type="label">
+				<Label>     3*124#  would bypass zone 24 for partition 3. Only disarmed partitions can be bypassed.</Label>
+			</Field>
+			<Field id="label10" type="label">
+				<Label>     2b236&gt;  would press function key 2, digits 236, right arrow for partition 2. Might not work with Envisalink.</Label>
+			</Field>
+		</ConfigUI>		
+	</Action>
+
+	<Action id="actionBypassZone" deviceFilter="self.alarmZone">
+		<Name>Bypass a Zone</Name>
+		<CallbackMethod>methodBypassZone</CallbackMethod>
+	</Action>
+	
+	<Action id="actionBypassZoneCancel" deviceFilter="self.alarmKeypad">
+		<Name>Cancel Bypass for All Zones</Name>
+		<CallbackMethod>methodBypassZoneCancel</CallbackMethod>
+	</Action>
+	
+	<Action id="actionBypassZoneRecall" deviceFilter="self.alarmKeypad">
+		<Name>Recall Last Zone(s) Bypass</Name>
+		<CallbackMethod>methodBypassZoneRecall</CallbackMethod>
 	</Action>
 	
 	<!--

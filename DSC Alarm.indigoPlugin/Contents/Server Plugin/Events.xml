@@ -2,57 +2,84 @@
 <Events>
 
     <Event id="armedAway" deviceFilter="self.alarmKeypad">
-        <Name>Alarm Armed in Away Mode</Name>
+        <Name>Alarm Armed in Away Mode (any partition)</Name>
     </Event> 
+    
     <Event id="armedStay" deviceFilter="self.alarmKeypad">
-        <Name>Alarm Armed in Stay Mode</Name>
-    </Event>     
+        <Name>Alarm Armed in Stay Mode (any partition)</Name>
+    </Event>  
+       
     <Event id="userArmed" deviceFilter="self.alarmKeypad">
-        <Name>Alarm Armed by User Code</Name>
+        <Name>Alarm Armed by User Code (any partition)</Name>
         <ConfigUI>
 			<Field id="userCode" type="textfield">
-				<Label>User Code:</Label>
+				<Label>User Code (2 digits):</Label>
 			</Field>
 			<Field id="space0" type="label"><Label/></Field>
-			<Field id="label1" type="label">
-				<Label>     HINT: Watch the log when arming to see the user code.</Label>
-			</Field>
-		</ConfigUI>
-    </Event>
-    
-    
-    <Event id="eventAlarmDisarmed" deviceFilter="self.alarmKeypad">
-        <Name>Alarm Disarmed</Name>
-    </Event> 
-    <Event id="userDisarmed" deviceFilter="self.alarmKeypad">
-        <Name>Alarm Disarmed by User Code</Name>
-        <ConfigUI>
-			<Field id="userCode" type="textfield">
-				<Label>User Code:</Label>
-			</Field>
-			<Field id="space0" type="label"><Label/></Field>
-			<Field id="label1" type="label">
+			<Field id="label1" type="label" fontColor="darkgray">
 				<Label>     HINT: Watch the log when disarming to see the user code.</Label>
 			</Field>
 		</ConfigUI>
     </Event>
     
+    <Event id="eventAlarmDisarmed" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Disarmed (any partition)</Name>
+    </Event> 
     
-    <Event id="eventFailToArm" deviceFilter="self.alarmKeypad">
-        <Name>Alarm Failed to Arm</Name>
+    <Event id="userDisarmed" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Disarmed by User Code (any partition)</Name>
+        <ConfigUI>
+			<Field id="userCode" type="textfield">
+				<Label>User Code (2 digits):</Label>
+			</Field>
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label1" type="label" fontColor="darkgray">
+				<Label>     HINT: Watch the log when disarming to see the user code.</Label>
+			</Field>
+		</ConfigUI>
     </Event>
     
+   <Event id="userDisarmedPartition" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Disarmed by User Code (select partition)</Name>
+        <ConfigUI>
+			<Field id="userCode" type="textfield">
+				<Label>User Code (2 digits):</Label>
+			</Field>
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label1" type="label" fontColor="darkgray">
+				<Label>     HINT: Watch the log when disarming to see the user code.</Label>
+			</Field>
+			<Field id="space1" type="label"><Label/></Field>
+			<Field id="space2" type="label"><Label/></Field>
+			<Field id="partitionNum" type="menu" defaultValue ="1">
+				<Label>Partition Number:</Label>
+				<List class="self" method="getKeypadList"/>
+			</Field>
+		</ConfigUI>
+    </Event>
     
+    <Event id="eventFailToArm" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Failed to Arm (any partition)</Name>
+    </Event>
+        
     <Event id="eventAlarmTripped" deviceFilter="self.alarmKeypad">
-        <Name>Alarm Tripped</Name>
+        <Name>Alarm Panel Tripped (any partition) - zone violation, fire or panic</Name>
     </Event> 
 
+    <Event id="eventZoneTripped" deviceFilter="self.alarmZone">
+        <Name>Alarm Zone Tripped (any partition) - zone violation</Name>
+    </Event> 
 
 	<Event id="eventNoticeAC_Trouble" deviceFilter="self.alarmKeypad">
 		<Name>Notice - AC Power Lost</Name>
 	</Event>
+	
 	<Event id="eventNoticeAC_Restore" deviceFilter="self.alarmKeypad">
 		<Name>Notice - AC Power Restored</Name>
+	</Event>
+
+	<Event id="eventNoticeTelephone_Ring" deviceFilter="self.alarmKeypad">
+		<Name>Notice - Telephone Ring Tone Detected</Name>
 	</Event>
 
 </Events>
