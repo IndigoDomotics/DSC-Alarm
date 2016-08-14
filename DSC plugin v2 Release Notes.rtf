@@ -1,0 +1,54 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1348\cocoasubrtf170
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid301\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid4}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}}
+\margl1440\margr1440\vieww16280\viewh19200\viewkind1
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\tx9360\pardirnatural\partightenfactor0
+
+\f0\b\fs24 \cf0 DSC Plugin Release Notes version 2.0.0:\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+
+\b0 This plugin has been tested with the new Envisalink-4 and a DSC PC-1864 system. The upgraded plugin adds many new features, which makes integration of the DSC security system into Indigo home automation very easy. Many more triggers were added, which provide flexibility how alarm events are being processed by Indigo. The plugin now copies status messages and zone violation memory into Indigo variables, which allows processing by Indigo triggers or forwarding via Apple Script to e.g. iMessage. The plugin now supports partitions and zone bypass. Due to limitations of the DSC panel full zone bypass monitoring is only possible with zones in partition 1. These zones receive a new icon (blue star) when they are bypassed. However, all partitions will have the Bypass LED On if a zone has been bypassed. Zone bypass commands can be issued for all partitions. In addition various panic alerts including the new Duress alert can be monitored.\
+\
+\pard\tx220\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\li720\fi-720\pardirnatural\partightenfactor0
+\ls1\ilvl0\cf0 {\listtext	\'95	}Added email notifications for panic alerts (Fire, Ambulance, Police) using the Alarm Triggered email subject.\
+{\listtext	\'95	}Added email notifications for duress code alerts using the Alarm Triggered email subject.\
+{\listtext	\'95	}Expanded log entry details to include partition information where not included.\
+{\listtext	\'95	}Added a Ready State to keypad devices.\
+{\listtext	\'95	}Added a Panic State to keypad devices for Fire, Ambulance, Police, Duress to allow panic triggers via Indigo.\
+{\listtext	\'95	}Added support for eight partitions.\
+{\listtext	\'95	}Added Global away arm command for all partitions.\
+{\listtext	\'95	}Programmed  Ready LED for all partitions.\
+{\listtext	\'95	}Programmed Armed LED for all partitions. \
+{\listtext	\'95	}Programmed Bypass LED for all partitions.\
+{\listtext	\'95	}Programmed Trouble LED for all partitions. \
+{\listtext	\'95	}Programmed Memory LED for all partitions.\
+{\listtext	\'95	}Added a partition property for alarm zones. Please assign all your zones to the same partitions as they are assigned on the DSC panel.\
+{\listtext	\'95	}Added device validation for keypad and partition number to avoid duplicate partition numbers.\
+{\listtext	\'95	}Added keypad property to include keypad custom names, which allows partition labeling in the log.\
+{\listtext	\'95	}Added user code name labeling, which shows in the log the user by name who disarmed the alarm. For instance: User 040 \'91Master\'92.\
+{\listtext	\'95	}Changed keypad press command to 071 to allow partition specific keypresses of up to 6 characters.\
+{\listtext	\'95	}Added option to send a DSC command based on variable text. This is very useful on Indigo Touch, since the text of a variable can be changed on your iPhone and then used as a keypress command.\
+{\listtext	\'95	}Added bypass state to all zones.\
+\pard\tx220\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\li720\fi-720\pardirnatural\partightenfactor0
+\ls2\ilvl0\cf0 {\listtext	\'95	}Added action for bypassing a specific zone.\
+{\listtext	\'95	}Added action for clearing all bypassed zones.\
+\pard\tx220\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\li720\fi-720\pardirnatural\partightenfactor0
+\ls3\ilvl0\cf0 {\listtext	\'95	}Added action for bypass recall.\
+\pard\tx220\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\li720\fi-720\pardirnatural\partightenfactor0
+\ls4\ilvl0\cf0 {\listtext	\'95	}Added bypass zone monitoring for partition 1 (Unfortunately the DSC panel does not updated the bypass status for zones in other partitions).\
+{\listtext	\'95	}Added new icon to indicate bypassed zones (partition 1 only). A blue star will be shown if a zone has been bypassed. This blue star can be overlayed the zone status icon in control pages to easily identify bypassed zones.The Bypass LED will work on all partitions and will come on when the system is armed.\
+{\listtext	\'95	}Added new icons for Disarm, Arm, ArmAway and GlobalArm for control pages and a larger background image for phone 5 and 6.\
+{\listtext	\'95	}Added speak and speak-to variable-function for panic alerts.\
+{\listtext	\'95	}Added trigger for user and partition-specific disarms. This allows you to setup Indigo triggers if the kids or a guest disarmed the system with their code.\
+{\listtext	\'95	}Fixed error checking in configUI to include alert and trouble email addresses.\
+{\listtext	\'95	}Added trigger for zone tripped violation (this allows processing of all-partition tripped zone events through Indigo), e.g. via Applescript and iMessage.\
+{\listtext	\'95	}Added trigger for telephone line ring tone detected, which might be useful for other Indigo events.\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+}
