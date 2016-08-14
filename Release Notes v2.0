@@ -1,0 +1,35 @@
+DSC Plugin Release Notes version 2.0.0:
+
+This plugin has been tested with the new Envisalink-4 and a DSC PC-1864 system. The upgraded plugin adds many new features, which makes integration of the DSC security system into Indigo home automation very easy. Many more triggers were added, which provide flexibility how alarm events are being processed by Indigo. The plugin now copies status messages and zone violation memory into Indigo variables, which allows processing by Indigo triggers or forwarding via Apple Script to e.g. iMessage. The plugin now supports partitions and zone bypass. Due to limitations of the DSC panel full zone bypass monitoring is only possible with zones in partition 1. These zones receive a new icon (blue star) when they are bypassed. However, all partitions will have the Bypass LED On if a zone has been bypassed. Zone bypass commands can be issued for all partitions. In addition various panic alerts including the new Duress alert can be monitored.
+
+	•	Added email notifications for panic alerts (Fire, Ambulance, Police) using the Alarm Triggered email subject.
+	•	Added email notifications for duress code alerts using the Alarm Triggered email subject.
+	•	Expanded log entry details to include partition information where not included.
+	•	Added a Ready State to keypad devices.
+	•	Added a Panic State to keypad devices for Fire, Ambulance, Police, Duress to allow panic triggers via Indigo.
+	•	Added support for eight partitions.
+	•	Added Global away arm command for all partitions.
+	•	Programmed  Ready LED for all partitions.
+	•	Programmed Armed LED for all partitions. 
+	•	Programmed Bypass LED for all partitions.
+	•	Programmed Trouble LED for all partitions. 
+	•	Programmed Memory LED for all partitions.
+	•	Added a partition property for alarm zones. Please assign all your zones to the same partitions as they are assigned on the DSC panel.
+	•	Added device validation for keypad and partition number to avoid duplicate partition numbers.
+	•	Added keypad property to include keypad custom names, which allows partition labeling in the log.
+	•	Added user code name labeling, which shows in the log the user by name who disarmed the alarm. For instance: User 040 ‘Master’.
+	•	Changed keypad press command to 071 to allow partition specific keypresses of up to 6 characters.
+	•	Added option to send a DSC command based on variable text. This is very useful on Indigo Touch, since the text of a variable can be changed on your iPhone and then used as a keypress command.
+	•	Added bypass state to all zones.
+	•	Added action for bypassing a specific zone.
+	•	Added action for clearing all bypassed zones.
+	•	Added action for bypass recall.
+	•	Added bypass zone monitoring for partition 1 (Unfortunately the DSC panel does not updated the bypass status for zones in other partitions).
+	•	Added new icon to indicate bypassed zones (partition 1 only). A blue star will be shown if a zone has been bypassed. This blue star can be overlayed the zone status icon in control pages to easily identify bypassed zones.The Bypass LED will work on all partitions and will come on when the system is armed.
+	•	Added new icons for Disarm, Arm, ArmAway and GlobalArm for control pages and a larger background image for phone 5 and 6.
+	•	Added speak and speak-to variable-function for panic alerts.
+	•	Added trigger for user and partition-specific disarms. This allows you to setup Indigo triggers if the kids or a guest disarmed the system with their code.
+	•	Fixed error checking in configUI to include alert and trouble email addresses.
+	•	Added trigger for zone tripped violation (this allows processing of all-partition tripped zone events through Indigo), e.g. via Applescript and iMessage.
+	•	Added trigger for telephone line ring tone detected, which might be useful for other Indigo events.
+
