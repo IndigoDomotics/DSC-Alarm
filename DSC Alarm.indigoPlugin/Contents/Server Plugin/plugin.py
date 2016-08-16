@@ -1206,7 +1206,7 @@ class Plugin(indigo.PluginBase):
 				self.mylogger.log(1, u"Alarm Disarmed. (Partition %d '%s')" % (partition, keyp))
 
 				#Only request bypassed zone list if we are not using IT-100
-				if self.useSerial == False:
+				if self.useSerial is False:
 					self.sleep(1)    #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
 					self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616 only if partition was in exit delay and cmd 750 is not sent.
 			self.trippedZoneList = []
