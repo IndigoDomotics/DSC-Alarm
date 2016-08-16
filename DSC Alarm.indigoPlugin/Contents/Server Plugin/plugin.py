@@ -1369,7 +1369,8 @@ class Plugin(indigo.PluginBase):
 					self.updateZoneState(zone, kZoneStateClosed)
 				self.closeTheseZonesList = []
 
-			if partition == 1:
+			#Only request bypassed zone list if we are on partition 1 and not using IT-100
+			if (partition == 1) and (self.useSerial is False):
 				self.sleep(1) #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
 				#self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616
 				self.txCmdList.append((kCmdNormal, '0711*1#'))		#triggers cmd 616
