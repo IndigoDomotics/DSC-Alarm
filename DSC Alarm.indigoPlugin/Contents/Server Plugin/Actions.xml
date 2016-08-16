@@ -7,22 +7,22 @@
 		<Name>Disarm Alarm</Name>
 		<CallbackMethod>methodDisarmAlarm</CallbackMethod>
 	</Action>
-	
+
 	<Action id="actionArmStay" deviceFilter="self.alarmKeypad">
 		<Name>Arm Alarm in Stay Mode</Name>
 		<CallbackMethod>methodArmStay</CallbackMethod>
 	</Action>
-	
+
 	<Action id="actionArmAway" deviceFilter="self.alarmKeypad">
 		<Name>Arm Alarm in Away Mode</Name>
 		<CallbackMethod>methodArmAway</CallbackMethod>
 	</Action>
-	
+
 	<Action id="actionArmGlobal" deviceFilter="self.alarmKeypad">
 		<Name>Arm Alarm in Away Global Mode</Name>
 		<CallbackMethod>methodArmGlobal</CallbackMethod>
 	</Action>
-	
+
 	<Action id="actionPanicAlarm" deviceFilter="self.alarmKeypad">
 		<Name>Panic Alarm</Name>
 		<CallbackMethod>methodPanicAlarm</CallbackMethod>
@@ -36,10 +36,10 @@
 					<Option value="1">Fire</Option>
 				</List>
 			</Field>
-		</ConfigUI>		
+		</ConfigUI>
 	</Action>
-	
-	
+
+
 	<Action id="actionSendKeypress" deviceFilter="self.alarmKeypad">
 		<Name>Send Keypress</Name>
 		<CallbackMethod>methodSendKeypress</CallbackMethod>
@@ -47,9 +47,6 @@
 			<Field type="textfield" id="keys">
 				<Label>Key(s) To Press:</Label>
 			</Field>
-			<Field id="label6" type="label">
-				<Label>     These are Partition(device)-specific Cmd 071 keypresses: up to 6 keystrokes, last one # to accept by keypad.</Label>
-			</Field>	
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label1" type="label">
 				<Label>Special Keys:</Label>
@@ -76,9 +73,9 @@
 			<Field id="label10" type="label">
 				<Label>     b236&gt;  would press function key 2, digits 236, right arrow. Might not work with Envisalink.</Label>
 			</Field>
-		</ConfigUI>		
+		</ConfigUI>
 	</Action>
-	
+
 	<Action id="actionSendKeypressVariable" deviceFilter="self.alarmKeypad">
 		<Name>Send Keypress Variable</Name>
 		<CallbackMethod>methodSendKeypressVariable</CallbackMethod>
@@ -87,8 +84,8 @@
 				<Label>Instructions:</Label>
 			</Field>
 			<Field id="label2" type="label">
-				<Label>     Enter command into variable named DSCcommand. These are Cmd 071 keypresses: Partition number plus up to 6 keystrokes, last one # to accept by keypad. </Label>
-			</Field>	
+				<Label>     Enter command into variable named DSCcommand. These are Cmd 071 keypresses: Partition number plus up to 6 keystrokes, last one # to accept by keypad.  NOTE this command currently only works with Envisalink interfaces.</Label>
+			</Field>
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label3" type="label">
 				<Label>Special Keys:</Label>
@@ -115,24 +112,24 @@
 			<Field id="label10" type="label">
 				<Label>     2b236&gt;  would press function key 2, digits 236, right arrow for partition 2. Might not work with Envisalink.</Label>
 			</Field>
-		</ConfigUI>		
+		</ConfigUI>
 	</Action>
 
 	<Action id="actionBypassZone" deviceFilter="self.alarmZone">
-		<Name>Bypass a Zone</Name>
+		<Name>Bypass a Zone (Envisalink Only)</Name>
 		<CallbackMethod>methodBypassZone</CallbackMethod>
 	</Action>
-	
+
 	<Action id="actionBypassZoneCancel" deviceFilter="self.alarmKeypad">
-		<Name>Cancel Bypass for All Zones</Name>
+		<Name>Cancel Bypass for All Zones (Envisalink Only)</Name>
 		<CallbackMethod>methodBypassZoneCancel</CallbackMethod>
 	</Action>
-	
+
 	<Action id="actionBypassZoneRecall" deviceFilter="self.alarmKeypad">
-		<Name>Recall Last Zone(s) Bypass</Name>
+		<Name>Recall Last Zone(s) Bypass (Envisalink Only)</Name>
 		<CallbackMethod>methodBypassZoneRecall</CallbackMethod>
 	</Action>
-	
+
 	<!--
 	<Action id="actionSyncTime" deviceFilter="self.alarmKeypad">
 		<Name>Sync Date/Time with Indigo</Name>
@@ -145,10 +142,10 @@
 			<Field id="label2" type="label">
 				<Label>NOTE: After executing this action it will take a few minutes for the new time to be reflected on your alarm keypads.</Label>
 			</Field>
-		</ConfigUI>		
+		</ConfigUI>
 	</Action>
 	-->
-	
+
 	<Action id="actionAdjustThermostat" deviceFilter="self.alarmTemp">
 		<Name>Adjust Thermostat</Name>
 		<CallbackMethod>methodAdjustThermostat</CallbackMethod>
@@ -171,14 +168,14 @@
 			<Field type="textfield" id="thermoSetPoint" visibleBindingId="thermoAdjustmentType" visibleBindingValue="=">
 				<Label>Temperature:</Label>
 			</Field>
-		</ConfigUI>		
+		</ConfigUI>
 	</Action>
-	
+
 <Action id="actionResetZoneGroupTimer" deviceFilter="self.alarmZoneGroup">
 	<Name>Reset Zone Group Timer</Name>
 	<CallbackMethod>methodResetZoneGroupTimer</CallbackMethod>
 </Action>
-	
+
 </Actions>
 
 

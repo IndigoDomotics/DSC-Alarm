@@ -356,36 +356,36 @@ class Plugin(indigo.PluginBase):
 		self.txCmdList.append((kCmdNormal, '060' + panicType))
 
 
-#	def methodSendKeypress(self, action):
-#		self.mylogger.log(3, u"Received Send Keypress Action")
-#		keys = action.props[u'keys']
-#		firstChar = True
-#		sendBreak = False
-#		for char in keys:
-#			if char == 'L':
-#				time.sleep(2)
-#				sendBreak = False
-#
-#			if (firstChar is False):
-#				self.txCmdList.append((kCmdNormal, '070^'))
-#
-#			if char != 'L':
-#				self.txCmdList.append((kCmdNormal, '070' + char))
-#				sendBreak = True
-#
-#			firstChar = False
-#		if (sendBreak is True):
-#			self.txCmdList.append((kCmdNormal, '070^'))
-
-
-	def methodSendKeypress(self, action, dev):
-		keypname = str(dev.pluginProps['partitionName'])
-		keypname = " '" + keypname + "'"
-		keyp = dev.pluginProps["partitionNumber"]
+	def methodSendKeypress(self, action):
+		self.mylogger.log(3, u"Received Send Keypress Action")
 		keys = action.props[u'keys']
-		self.mylogger.log(1, u"Received Send Keypress Action [%s]. (Partition %s%s)" % (keys, keyp, keypname))
-		tx = "".join(["071", keyp, keys])
-		self.txCmdList.append((kCmdNormal, tx))
+		firstChar = True
+		sendBreak = False
+		for char in keys:
+			if char == 'L':
+				time.sleep(2)
+				sendBreak = False
+
+			if (firstChar is False):
+				self.txCmdList.append((kCmdNormal, '070^'))
+
+			if char != 'L':
+				self.txCmdList.append((kCmdNormal, '070' + char))
+				sendBreak = True
+
+			firstChar = False
+		if (sendBreak is True):
+			self.txCmdList.append((kCmdNormal, '070^'))
+
+
+	# def methodSendKeypress(self, action, dev):
+	# 	keypname = str(dev.pluginProps['partitionName'])
+	# 	keypname = " '" + keypname + "'"
+	# 	keyp = dev.pluginProps["partitionNumber"]
+	# 	keys = action.props[u'keys']
+	# 	self.mylogger.log(1, u"Received Send Keypress Action [%s]. (Partition %s%s)" % (keys, keyp, keypname))
+	# 	tx = "".join(["071", keyp, keys])
+	# 	self.txCmdList.append((kCmdNormal, tx))
 
 
 	def methodSendKeypressVariable(self, action):
@@ -1204,8 +1204,11 @@ class Plugin(indigo.PluginBase):
 			keypstate = str(dev.states['state'])
 			if partition == 1 and keypstate == kAlarmStateExitDelay:
 				self.mylogger.log(1, u"Alarm Disarmed. (Partition %d '%s')" % (partition, keyp))
-				self.sleep(1)    #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
-				self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616 only if partition was in exit delay and cmd 750 is not sent.
+
+				#Only request bypassed zone list if we are not using IT-100
+				if self.useSerial == False:
+					self.sleep(1)    #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
+					self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616 only if partition was in exit delay and cmd 750 is not sent.
 			self.trippedZoneList = []
 			self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
 			self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateDisarmed)
