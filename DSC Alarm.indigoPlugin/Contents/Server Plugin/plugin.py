@@ -356,8 +356,8 @@ class Plugin(indigo.PluginBase):
 		self.txCmdList.append((kCmdNormal, '060' + panicType))
 
 
-	def methodSendKeypress(self, action):
-		self.mylogger.log(3, u"Received Send Keypress Action")
+	def methodSendKeypress070(self, action):
+		self.mylogger.log(3, u"Received Send Keypress 070 Action")
 		keys = action.props[u'keys']
 		firstChar = True
 		sendBreak = False
@@ -378,14 +378,24 @@ class Plugin(indigo.PluginBase):
 			self.txCmdList.append((kCmdNormal, '070^'))
 
 
-	# def methodSendKeypress(self, action, dev):
-	# 	keypname = str(dev.pluginProps['partitionName'])
-	# 	keypname = " '" + keypname + "'"
-	# 	keyp = dev.pluginProps["partitionNumber"]
-	# 	keys = action.props[u'keys']
-	# 	self.mylogger.log(1, u"Received Send Keypress Action [%s]. (Partition %s%s)" % (keys, keyp, keypname))
-	# 	tx = "".join(["071", keyp, keys])
-	# 	self.txCmdList.append((kCmdNormal, tx))
+	def methodSendKeypress071(self, action, dev):
+	 	keypname = str(dev.pluginProps['partitionName'])
+	 	keypname = " '" + keypname + "'"
+	 	keyp = dev.pluginProps["partitionNumber"]
+	 	keys = action.props[u'keys']
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
+	 	self.mylogger.log(1, u"Received Send Keypress Action [%s]. (Partition %s%s)" % (keys, keyp, keypname))
+	 	cleanKeys = re.sub(r'[^a-e0-9LFAP<>=*#]+', '', keys)
+		if len(keys) != len(cleanKeys) or "*8" in keys:
+			self.mylogger.log(1, u"There are Invalid Keys in your Command.")
+			return
+		if len(keys) > 6:
+			self.mylogger.log(1, u"The Key Command is too long.")
+			return		
+	 	tx = "".join(["071", keyp, keys])
+	 	self.txCmdList.append((kCmdNormal, tx))
 
 
 	def methodSendKeypressVariable(self, action):
@@ -393,9 +403,15 @@ class Plugin(indigo.PluginBase):
 		keys = keys.value
 		self.mylogger.log(1, u"Received Send Keypress Action [%s]." % keys)
 		cleanKeys = re.sub(r'[^a-e0-9LFAP<>=*#]+', '', keys)
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
 		if len(keys) != len(cleanKeys) or "*8" in keys:
 			self.mylogger.log(1, u"There are Invalid Keys in your DSCcommand Variable.")
 			return
+		if len(keys) > 7:
+			self.mylogger.log(1, u"The Key Command is too long.")
+			return		
 		if keys[0] < "0" or keys[0] > "8":
 			self.mylogger.log(1, u"The First Character in your DSCcommand Needs to be a Valid Partition (1-8).")
 		else:
@@ -410,6 +426,9 @@ class Plugin(indigo.PluginBase):
 		keypname = str(dev.pluginProps['partitionName'])
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['state'])
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
 		if keypstate == kAlarmStateArmed:
 			self.mylogger.log(1, u"The Selected Zone '%s' is Armed and Cannot be Bypassed." % zone.name)
 			return
@@ -425,6 +444,9 @@ class Plugin(indigo.PluginBase):
 		keypname = str(dev.pluginProps['partitionName'])
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['state'])
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
 		if keypstate == kAlarmStateArmed:
 			self.mylogger.log(1, u"The Selected Partition %s%s is Armed and Cannot Accept Bypass Cancel." % (keyp, keypname))
 			return
@@ -439,6 +461,9 @@ class Plugin(indigo.PluginBase):
 		keypname = str(dev.pluginProps['partitionName'])
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['state'])
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
 		if keypstate == kAlarmStateArmed:
 			self.mylogger.log(1, u"The Selected Partition %s%s is Armed and Cannot Accept Bypass Recall." % (keyp, keypname))
 			return

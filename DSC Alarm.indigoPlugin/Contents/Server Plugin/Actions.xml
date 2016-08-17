@@ -40,16 +40,16 @@
 	</Action>
 
 
-	<Action id="actionSendKeypress" deviceFilter="self.alarmKeypad">
-		<Name>Send Keypress</Name>
-		<CallbackMethod>methodSendKeypress</CallbackMethod>
+	<Action id="actionSendKeypress070">
+		<Name>Send Single Keypress</Name>
+		<CallbackMethod>methodSendKeypress070</CallbackMethod>
 		<ConfigUI>
 			<Field type="textfield" id="keys">
-				<Label>Key(s) To Press:</Label>
+				<Label>Key To Press (for Partition 1 only):</Label>
 			</Field>
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label1" type="label">
-				<Label>Special Keys:</Label>
+				<Label>Special Keys (IT-100 only):</Label>
 			</Field>
 			<Field id="label2" type="label">
 				<Label>     Displayed as: Actual Keypad Key (keypress code)</Label>
@@ -63,70 +63,71 @@
 			<Field id="label5" type="label">
 				<Label>     Panic Keys: Fire(F), Ambulance(A), Panic(P)</Label>
 			</Field>
+			<Field id="label6" type="label">
+				<Label>     Long Keypress: Key followed by L.  ie. '2L' to hold 2.</Label>
+			</Field>	
 			<Field id="space1" type="label"><Label/></Field>
 			<Field id="label8" type="label">
 				<Label>Example:</Label>
 			</Field>
-			<Field id="label9" type="label">
-				<Label>     *124#  would bypass zone 24 in the selected partition. Only disarmed partitions can be bypassed.</Label>
-			</Field>
 			<Field id="label10" type="label">
-				<Label>     b236&gt;  would press function key 2, digits 236, right arrow. Might not work with Envisalink.</Label>
+				<Label>     b236&gt;  would press function key 2, digits 236, right arrow. Special keys will not work with Envisalink.</Label>
 			</Field>
 		</ConfigUI>
 	</Action>
 
-	<Action id="actionSendKeypressVariable" deviceFilter="self.alarmKeypad">
-		<Name>Send Keypress Variable</Name>
+	<Action id="actionSendKeypress071" deviceFilter="self.alarmKeypad">
+		<Name>Send Multiple Keypresses – EVL only</Name>
+		<CallbackMethod>methodSendKeypress071</CallbackMethod>
+		<ConfigUI>
+			<Field type="textfield" id="keys">
+				<Label>Key(s) To Press:</Label>
+			</Field>
+			<Field id="label6" type="label">
+				<Label>     These are Partition(device)-specific Cmd 071 keypresses: up to 6 keystrokes, last one # to accept by keypad.  NOTE: this command currently only works with Envisalink interfaces.</Label>
+			</Field>	
+			<Field id="space0" type="label"><Label/></Field>
+			<Field id="label8" type="label">
+				<Label>Example:</Label>
+			</Field>
+			<Field id="label9" type="label">
+				<Label>     *124#  would bypass zone 24 in the partition selected under Device. Only disarmed partitions can be bypassed. Will not work if user code is required for bypass access.</Label>
+			</Field>
+		</ConfigUI>		
+	</Action>
+
+	<Action id="actionSendKeypressVariable">
+		<Name>Send Keypress Variable – EVL only</Name>
 		<CallbackMethod>methodSendKeypressVariable</CallbackMethod>
 		<ConfigUI>
 			<Field id="label1" type="label">
 				<Label>Instructions:</Label>
 			</Field>
 			<Field id="label2" type="label">
-				<Label>     Enter command into variable named DSCcommand. These are Cmd 071 keypresses: Partition number plus up to 6 keystrokes, last one # to accept by keypad.  NOTE this command currently only works with Envisalink interfaces.</Label>
+				<Label>     Enter command into variable named DSCcommand. These are Cmd 071 keypresses: Partition number plus up to 6 keystrokes, last one # to accept by keypad.  NOTE: this command currently only works with Envisalink interfaces.</Label>
 			</Field>
 			<Field id="space0" type="label"><Label/></Field>
-			<Field id="label3" type="label">
-				<Label>Special Keys:</Label>
-			</Field>
-			<Field id="label4" type="label">
-				<Label>     Displayed as: Actual Keypad Key (keypress code)</Label>
-			</Field>
-			<Field id="label5" type="label">
-				<Label>     Function Keys: 1(a), 2(b), 3(c), 4(d), 5(e)</Label>
-			</Field>
-			<Field id="label6" type="label">
-				<Label>     Arrow Keys: Left(&lt;), Right(&gt;), Both(=)</Label>
-			</Field>
-			<Field id="label7" type="label">
-				<Label>     Panic Keys: Fire(F), Ambulance(A), Panic(P)</Label>
-			</Field>
-			<Field id="space1" type="label"><Label/></Field>
 			<Field id="label8" type="label">
 				<Label>Example:</Label>
 			</Field>
 			<Field id="label9" type="label">
-				<Label>     3*124#  would bypass zone 24 for partition 3. Only disarmed partitions can be bypassed.</Label>
-			</Field>
-			<Field id="label10" type="label">
-				<Label>     2b236&gt;  would press function key 2, digits 236, right arrow for partition 2. Might not work with Envisalink.</Label>
+				<Label>     3*124#  would bypass zone 24 for partition 3. First character needs to be a partition number. Only disarmed partitions can be bypassed. Will not work if user code is required for bypass access.</Label>
 			</Field>
 		</ConfigUI>
 	</Action>
 
 	<Action id="actionBypassZone" deviceFilter="self.alarmZone">
-		<Name>Bypass a Zone (Envisalink Only)</Name>
+		<Name>Bypass a Zone – EVL only</Name>
 		<CallbackMethod>methodBypassZone</CallbackMethod>
 	</Action>
 
 	<Action id="actionBypassZoneCancel" deviceFilter="self.alarmKeypad">
-		<Name>Cancel Bypass for All Zones (Envisalink Only)</Name>
+		<Name>Cancel Bypass for All Zones – EVL only</Name>
 		<CallbackMethod>methodBypassZoneCancel</CallbackMethod>
 	</Action>
 
 	<Action id="actionBypassZoneRecall" deviceFilter="self.alarmKeypad">
-		<Name>Recall Last Zone(s) Bypass (Envisalink Only)</Name>
+		<Name>Recall Last Zone(s) Bypass – EVL only</Name>
 		<CallbackMethod>methodBypassZoneRecall</CallbackMethod>
 	</Action>
 
