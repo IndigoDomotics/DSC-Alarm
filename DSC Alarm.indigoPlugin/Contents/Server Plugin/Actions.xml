@@ -40,7 +40,7 @@
 	</Action>
 
 
-	<Action id="actionSendKeypress070">
+	<Action id="actionSendKeypress">
 		<Name>Send Single Keypress</Name>
 		<CallbackMethod>methodSendKeypress070</CallbackMethod>
 		<ConfigUI>
