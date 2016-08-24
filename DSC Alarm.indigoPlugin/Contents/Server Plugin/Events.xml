@@ -9,6 +9,16 @@
         <Name>Alarm Armed in Stay Mode (any partition)</Name>
     </Event>  
        
+   <Event id="eventPartitionArmed" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Armed in Stay or Away Mode (select partition)</Name>
+        <ConfigUI>
+			<Field id="partitionNum" type="menu" defaultValue ="1">
+				<Label>Partition Number:</Label>
+				<List class="self" method="getKeypadList"/>
+			</Field>
+		</ConfigUI>
+    </Event>
+    
     <Event id="userArmed" deviceFilter="self.alarmKeypad">
         <Name>Alarm Armed by User Code (any partition)</Name>
         <ConfigUI>
@@ -17,7 +27,7 @@
 			</Field>
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label1" type="label" fontColor="darkgray">
-				<Label>     HINT: Watch the log when disarming to see the user code.</Label>
+				<Label>     HINT: Watch the log when disarming to see the user code. Triggers with stay or away arming.</Label>
 			</Field>
 		</ConfigUI>
     </Event>
@@ -35,6 +45,16 @@
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label1" type="label" fontColor="darkgray">
 				<Label>     HINT: Watch the log when disarming to see the user code.</Label>
+			</Field>
+		</ConfigUI>
+    </Event>
+    
+   <Event id="eventPartitionDisarmed" deviceFilter="self.alarmKeypad">
+        <Name>Alarm Disarmed (select partition)</Name>
+        <ConfigUI>
+			<Field id="partitionNum" type="menu" defaultValue ="1">
+				<Label>Partition Number:</Label>
+				<List class="self" method="getKeypadList"/>
 			</Field>
 		</ConfigUI>
     </Event>
