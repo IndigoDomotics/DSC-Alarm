@@ -24,7 +24,7 @@
 	</Action>
 
 	<Action id="actionPanicAlarm" deviceFilter="self.alarmKeypad">
-		<Name>Panic Alarm</Name>
+		<Name>Trigger Panic Alarm</Name>
 		<CallbackMethod>methodPanicAlarm</CallbackMethod>
 		<ConfigUI>
 			<Field type="menu" id="panicAlarmType" defaultValue="4">
@@ -129,6 +129,16 @@
 	<Action id="actionBypassZoneRecall" deviceFilter="self.alarmKeypad">
 		<Name>Recall Last Zone(s) Bypass – EVL only</Name>
 		<CallbackMethod>methodBypassZoneRecall</CallbackMethod>
+	</Action>
+
+	<Action id="actionDoorChimeEnable" deviceFilter="self.alarmKeypad">
+		<Name>Enable Door Chime – EVL only</Name>
+		<CallbackMethod>methodDoorChimeEnable</CallbackMethod>
+	</Action>
+
+	<Action id="actionDoorChimeDisable" deviceFilter="self.alarmKeypad">
+		<Name>Disable Door Chime – EVL only</Name>
+		<CallbackMethod>methodDoorChimeDisable</CallbackMethod>
 	</Action>
 
 	<!--

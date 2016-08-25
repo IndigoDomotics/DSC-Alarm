@@ -472,6 +472,38 @@ class Plugin(indigo.PluginBase):
 		self.txCmdList.append((kCmdNormal, tx))
 
 
+	def methodDoorChimeEnable(self, action, dev):
+		keyp = dev.pluginProps["partitionNumber"]
+		dev = indigo.devices[self.keypadList[int(keyp)]]
+		keypname = str(dev.pluginProps['partitionName'])
+		keypname = " '" + keypname + "'"
+		keypstate = str(dev.states['KeypadChime'])
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
+		self.mylogger.log(1, u"Received Keypad Chime Enable for Partition %s%s." % (keyp, keypname))
+		if keypstate != kKeypadStateChimeEnabled:
+			tx = "".join(["071", keyp, "*4"])
+			self.txCmdList.append((kCmdNormal, tx))
+			return
+
+
+	def methodDoorChimeDisable(self, action, dev):
+		keyp = dev.pluginProps["partitionNumber"]
+		dev = indigo.devices[self.keypadList[int(keyp)]]
+		keypname = str(dev.pluginProps['partitionName'])
+		keypname = " '" + keypname + "'"
+		keypstate = str(dev.states['KeypadChime'])
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
+		self.mylogger.log(1, u"Received Keypad Chime Disable for Partition %s%s." % (keyp, keypname))
+		if keypstate == kKeypadStateChimeEnabled:
+			tx = "".join(["071", keyp, "*4"])
+			self.txCmdList.append((kCmdNormal, tx))
+			return
+
+
     # Queue a command to set DSC Thermostat Setpoints
 	#
 	def methodAdjustThermostat(self, action):
@@ -1010,7 +1042,7 @@ class Plugin(indigo.PluginBase):
 					else:
 						self.mylogger.log(3, u"Alarm panel time is within 1 minute of actual time, no update necessary.")
 
-				# If this is a 2DS interface then lets insert the time into the virtual keypad
+				# If this is a 2DS/Envisalink interface then lets insert the time (updated every 4 minutes)
 				if self.useSerial is False:
 					tAmPm = u'a'
 					if tHour >= 12:
@@ -1072,13 +1104,33 @@ class Plugin(indigo.PluginBase):
 			if m:
 				(partition, zone) = (int(m.group(1)), int(m.group(2)))
 				dev = indigo.devices[self.keypadList[partition]]
+				zonedev = indigo.devices[self.zoneList[zone]]
 				keyp = str(dev.pluginProps['partitionName'])
-				keyp = " '" + keyp + "'"
-				self.mylogger.log(1, u"Zone %d Restored. (Partition %d%s)" % (zone, partition, keyp))
+				self.mylogger.log(1, u"Zone '%s' Restored. (Partition %d '%s')" % (zonedev.name, partition, keyp))
+
+		elif cmd == '603':
+			m = re.search(r'^(.)(...)$', dat)
+			if m:
+				(partition, zone) = (int(m.group(1)), int(m.group(2)))
+				self.mylogger.log(3, u"Zone Number %d Has a Tamper Condition." % zone)
+
+		elif cmd == '604':
+			m = re.search(r'^(.)(...)$', dat)
+			if m:
+				(partition, zone) = (int(m.group(1)), int(m.group(2)))
+				self.mylogger.log(3, u"Zone Number %d Tamper Condition has been Restored." % zone)
+
+		elif cmd == '605':
+			zone = int(dat)
+			self.mylogger.log(3, u"Zone Number %d Has a Fault Condition." % zone)
+			
+		elif cmd == '606':
+			zone = int(dat)
+			self.mylogger.log(3, u"Zone Number %d Fault Condition has been Restored." % zone)
 
 		elif cmd == '609':
 			zone = int(dat)
-			self.mylogger.log(3, u"Zone number %d Open." % zone)
+			self.mylogger.log(3, u"Zone Number %d Open." % zone)
 			self.updateZoneState(zone, kZoneStateOpen)
 			if self.repeatAlarmTripped is True:
 				if zone in self.closeTheseZonesList:
@@ -1086,7 +1138,7 @@ class Plugin(indigo.PluginBase):
 
 		elif cmd == '610':
 			zone = int(dat)
-			self.mylogger.log(3, u"Zone number %d Closed." % zone)
+			self.mylogger.log(3, u"Zone Number %d Closed." % zone)
 			# Update the zone to closed ONLY if the alarm is not tripped
 			# We want the tripped states to be preserved so someone looking
 			# at their control page will see all the zones that have been
@@ -1185,6 +1237,12 @@ class Plugin(indigo.PluginBase):
 						self.updateKeypad(partition, u'LEDBypass', 'on')   #LED on since motion sensors are bypassed
 
 					self.triggerEvent(armedEvent)
+					for trig in self.triggerList:
+						trigger = indigo.triggers[trig]
+						if trigger.pluginTypeId == u'eventPartitionArmed':
+							if trigger.pluginProps[u'partitionNum'] == str(partition):
+								indigo.trigger.execute(trigger.id)
+					
 					self.updateKeypad(partition, u'state', kAlarmStateArmed)
 					self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 					self.updateKeypad(partition, u'LEDReady', 'off')
@@ -1212,7 +1270,7 @@ class Plugin(indigo.PluginBase):
 			self.repeatAlarmTripped = True
 
 		elif cmd == '655':
-			# This command is send after user disarms an alarm that was not tripped (also see cmd 750).
+			# This command is send after user disarms an alarm that was not tripped (also see cmd 750, 751).
 			# This is only disarm cmd sent if arming is cancelled during exit delay (which also cancels zone bypass)
 			# If the alarm has been disarmed while it was tripped, update any zone states
 			# that were closed during the break in.  We don't update them during the event
@@ -1243,8 +1301,8 @@ class Plugin(indigo.PluginBase):
 			self.updateKeypad(partition, u'LEDReady', 'on')
 			self.updateKeypad(partition, u'LEDBypass', 'off')
 
-			#self.triggerEvent(u'eventAlarmDisarmed') #use cmd 750 trigger
-			#self.speak('speakTextDisarmed')  #use cmd 750 trigger
+			#self.triggerEvent(u'eventAlarmDisarmed') #use cmd 750 & 751 triggers
+			#self.speak('speakTextDisarmed')  #use cmd 750 & 751 triggers
 
 
 		elif cmd == '656':
@@ -1385,6 +1443,12 @@ class Plugin(indigo.PluginBase):
 						if trigger.pluginProps[u'userCode'] == user and trigger.pluginProps[u'partitionNum'] == str(partition):
 							indigo.trigger.execute(trigger.id)
 
+				for trig in self.triggerList:
+					trigger = indigo.triggers[trig]
+					if trigger.pluginTypeId == u'eventPartitionDisarmed':
+						if trigger.pluginProps[u'partitionNum'] == str(partition):
+							indigo.trigger.execute(trigger.id)
+
 			# If the alarm has been disarmed while it was tripped, update any zone states
 			# that were closed during the break in.  We don't update them during the event
 			# so that Indigo's zone states will represent a zone as tripped during the entire event.
@@ -1402,12 +1466,33 @@ class Plugin(indigo.PluginBase):
 
 
 		elif cmd == '751':
-			#special opening
+			#special opening (triggered by keyswitch but not by Indigo Touch)
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(2, u"Alarm Disarmed by Special Opening (Partition %d '%s')" % (partition, keyp))
-			#self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))	#triggers cmd 616
+			self.mylogger.log(1, u"Alarm Disarmed by Special Opening (Partition %d '%s')" % (partition, keyp))
+			# self.trippedZoneList = []    #We do not want to delete list of tripped zones here
+			self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
+			self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateDisarmed)
+			self.updateKeypad(partition, u'LEDArmed', 'off')
+			self.updateKeypad(0, u'PanicState', kPanicStateNone)
+			self.updateKeypad(partition, u'ReadyState', kReadyStateTrue)
+			self.updateKeypad(partition, u'LEDReady', 'on')
+			self.updateKeypad(partition, u'LEDBypass', 'off')
+
+			self.triggerEvent(u'eventAlarmDisarmed')
+			self.speak('speakTextDisarmed')
+			
+			for trig in self.triggerList:
+				trigger = indigo.triggers[trig]
+				if trigger.pluginTypeId == u'eventPartitionDisarmed':
+					if trigger.pluginProps[u'partitionNum'] == str(partition):
+						indigo.trigger.execute(trigger.id)
+			
+			#Only request bypassed zone list if we are not using IT-100
+			if (partition == 1) and (self.useSerial is False):			
+				self.sleep(1) #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
+				self.txCmdList.append((kCmdNormal, '0711*1#'))		#triggers cmd 616
 
 
 		elif cmd == '800':
@@ -1489,6 +1574,7 @@ class Plugin(indigo.PluginBase):
 			self.mylogger.logError(u"Code Required")
 
 		elif cmd == '901':
+			#this updates the virtual keypad
 			#for char in dat:
 			#	self.mylogger.log(3, u"LCD DEBUG: %d" % ord(char))
 			m = re.search(r'^...(..)(.*)$', dat)
