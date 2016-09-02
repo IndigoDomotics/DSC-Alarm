@@ -1527,12 +1527,13 @@ class Plugin(indigo.PluginBase):
 
 		elif cmd == '840':
 			partition = int(dat)
-			dev = indigo.devices[self.keypadList[partition]]
-			keyp = str(dev.pluginProps['partitionName'])
-			keyp = " '" + keyp + "'"
-			self.mylogger.log(1, u"Trouble Status (LED ON). (Partition %d%s)" % (partition, keyp))
-			self.updateKeypad(partition, u'LEDTrouble', 'on')   # this updates LED for partitions 1-8
-			self.troubleClearedTimer = 0
+			if partition in self.keypadList:
+				dev = indigo.devices[self.keypadList[partition]]
+				keyp = str(dev.pluginProps['partitionName'])
+				keyp = " '" + keyp + "'"
+				self.mylogger.log(1, u"Trouble Status (LED ON). (Partition %d%s)" % (partition, keyp))
+				self.updateKeypad(partition, u'LEDTrouble', 'on')   # this updates LED for partitions 1-8
+				self.troubleClearedTimer = 0
 
 		elif cmd == '841':
 			#Sends Trouble off for all partitions, including undefined ones.
