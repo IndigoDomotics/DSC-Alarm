@@ -393,7 +393,7 @@ class Plugin(indigo.PluginBase):
 			return
 		if len(keys) > 6:
 			self.mylogger.log(1, u"The Key Command is too long.")
-			return		
+			return
 	 	tx = "".join(["071", keyp, keys])
 	 	self.txCmdList.append((kCmdNormal, tx))
 
@@ -411,7 +411,7 @@ class Plugin(indigo.PluginBase):
 			return
 		if len(keys) > 7:
 			self.mylogger.log(1, u"The Key Command is too long.")
-			return		
+			return
 		if keys[0] < "0" or keys[0] > "8":
 			self.mylogger.log(1, u"The First Character in your DSCcommand Needs to be a Valid Partition (1-8).")
 		else:
@@ -852,7 +852,7 @@ class Plugin(indigo.PluginBase):
 		pkt = "%s%02X\r\n" % (data, self.calcChecksum(data))
 		self.mylogger.log(4, u"TX: %s" % pkt)
 		try:
-			self.writePort(pkt)
+			self.writePort(pkt.encode())
 		except Exception, err:
 			self.mylogger.logError('Connection TX Error: %s' % (str(err)))
 			exit()
@@ -1123,7 +1123,7 @@ class Plugin(indigo.PluginBase):
 		elif cmd == '605':
 			zone = int(dat)
 			self.mylogger.log(3, u"Zone Number %d Has a Fault Condition." % zone)
-			
+
 		elif cmd == '606':
 			zone = int(dat)
 			self.mylogger.log(3, u"Zone Number %d Fault Condition has been Restored." % zone)
@@ -1242,7 +1242,7 @@ class Plugin(indigo.PluginBase):
 						if trigger.pluginTypeId == u'eventPartitionArmed':
 							if trigger.pluginProps[u'partitionNum'] == str(partition):
 								indigo.trigger.execute(trigger.id)
-					
+
 					self.updateKeypad(partition, u'state', kAlarmStateArmed)
 					self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 					self.updateKeypad(partition, u'LEDReady', 'off')
@@ -1482,15 +1482,15 @@ class Plugin(indigo.PluginBase):
 
 			self.triggerEvent(u'eventAlarmDisarmed')
 			self.speak('speakTextDisarmed')
-			
+
 			for trig in self.triggerList:
 				trigger = indigo.triggers[trig]
 				if trigger.pluginTypeId == u'eventPartitionDisarmed':
 					if trigger.pluginProps[u'partitionNum'] == str(partition):
 						indigo.trigger.execute(trigger.id)
-			
+
 			#Only request bypassed zone list if we are not using IT-100
-			if (partition == 1) and (self.useSerial is False):			
+			if (partition == 1) and (self.useSerial is False):
 				self.sleep(1) #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
 				self.txCmdList.append((kCmdNormal, '0711*1#'))		#triggers cmd 616
 
