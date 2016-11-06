@@ -18,6 +18,9 @@
 					<Option value="zoneTypeDoor">Door</Option>
 					<Option value="zoneTypeWindow">Window</Option>
 					<Option value="zoneTypeMotion">Motion</Option>
+					<Option value="zoneTypeFire">Fire</Option>
+					<Option value="zoneTypeWater">Water</Option>
+					<Option value="zoneTypeGas">Gas</Option>
 					<Option value="zoneTypeOther">Other</Option>
 				</List>
 			</Field>
