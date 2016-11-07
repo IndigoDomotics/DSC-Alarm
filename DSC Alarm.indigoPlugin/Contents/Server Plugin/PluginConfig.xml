@@ -88,6 +88,31 @@
 		<Label>Notice Email Content:</Label>
 	</Field>
 
+		<Field id="space8" type="label">
+		<Label></Label>
+	</Field>
+
+########################################################################################
+############# Kidney514 ##########  Sending email of who is disarming
+########################################################################################
+
+	<Field id="emailDisarmNote" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Enter an address and subject below to receive an email to know who is Disarming</Label>
+	</Field>
+	<!-- This is really the email text box for the updater but we'll share it this time -->
+	<Field id="EmailDisarm" type="textfield">
+		<Label>Disarm Email:</Label>
+	</Field>
+	<Field id="EmailDisarmSubject" type="textfield" defaultValue="Disarm Notice">
+		<Label>Disarm Email Subject:</Label>
+	</Field>
+
+	<!-- The setting below is for berkinet's use -->
+	<Field id="EmailDisarmContent" type="textfield" hidden="true">
+		<Label>Disarm Email Content:</Label>
+	</Field>
+########################################################################################
+
 	<Field
 		id = "separator01" 
 		type = "separator"/>

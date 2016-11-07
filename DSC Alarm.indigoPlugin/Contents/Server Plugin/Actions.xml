@@ -161,10 +161,10 @@
 		<Name>Adjust Thermostat</Name>
 		<CallbackMethod>methodAdjustThermostat</CallbackMethod>
 		<ConfigUI>
-			<Field type="menu" id="thermoAdjustWhich" defaultValue="h">
+			<Field type="menu" id="thermoAdjustWhich" defaultValue="H">
 				<Label></Label>
 				<List>
-					<Option value="h">Heat Setpoint</Option>
+					<Option value="H">Heat Setpoint</Option>
 					<Option value="C">Cool Setpoint</Option>
 				</List>
 			</Field>

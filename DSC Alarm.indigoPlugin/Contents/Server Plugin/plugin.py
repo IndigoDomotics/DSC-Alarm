@@ -98,8 +98,10 @@ class Plugin(indigo.PluginBase):
 		self.ourVariableFolder = None
 		self.configEmailUrgent = ""
 		self.configEmailNotice = ""
+		self.configEmailDisarm = ""
 		self.configEmailUrgentSubject = ""
 		self.configEmailNoticeSubject = ""
+		self.configEmailDisarmSubject = ""
 		self.userCode = ""
 		self.userLabel = ""
 		self.userLabelDict = {}
@@ -107,12 +109,12 @@ class Plugin(indigo.PluginBase):
 		self.configKeepTimeSynced = True
 		self.troubleCode = 0
 		self.troubleClearedTimer = 0
-		if "DSCalarmText" not in indigo.variables:
-			indigo.variable.create("DSCalarmText", value="")
-		if "DSCalarmMemory" not in indigo.variables:
-			indigo.variable.create("DSCalarmMemory", value="no tripped zones")
-		if "DSCcommand" not in indigo.variables:
-			indigo.variable.create("DSCcommand", value="#")
+		if "DSC_Alarm_Text" not in indigo.variables:
+			indigo.variable.create("DSC_Alarm_Text", value="")
+		if "DSC_Alarm_Memory" not in indigo.variables:
+			indigo.variable.create("DSC_Alarm_Memory", value="no tripped zones")
+		if "DSC_Command" not in indigo.variables:
+			indigo.variable.create("DSC_Command", value="#")
 
 
 
@@ -399,7 +401,7 @@ class Plugin(indigo.PluginBase):
 
 
 	def methodSendKeypressVariable(self, action):
-		keys = indigo.variables ["DSCcommand"]
+		keys = indigo.variables ["DSC_Command"]
 		keys = keys.value
 		self.mylogger.log(1, u"Received Send Keypress Action [%s]." % keys)
 		cleanKeys = re.sub(r'[^a-e0-9LFAP<>=*#]+', '', keys)
@@ -603,6 +605,11 @@ class Plugin(indigo.PluginBase):
 				errorMsgDict[u'updaterEmail'] = u"Please enter a valid email address."
 				wasError = True
 
+		if len(valuesDict[u'EmailDisarm']) > 0:
+			if not re.match(r"[^@]+@[^@]+\.[^@]+", valuesDict[u'EmailDisarm']):
+				errorMsgDict[u'EmailDisarm'] = u"Please enter a valid email address."
+				wasError = True
+
 		userCodeList = valuesDict['userCode'].split(",")
 		userLabelList = valuesDict['userLabel'].split(",")
 		newuserCodeList = [s for s in userCodeList if s.isdigit()]   #transfers only numbers to newUserCodeList
@@ -763,8 +770,10 @@ class Plugin(indigo.PluginBase):
 
 			self.configEmailUrgent = valuesDict.get(u'emailUrgent', '')
 			self.configEmailNotice = valuesDict.get(u'updaterEmail', '')
+			self.configEmailDisarm = valuesDict.get(u'EmailDisarm', '')
 			self.configEmailUrgentSubject = valuesDict.get(u'emailUrgentSubject', 'Alarm Tripped')
 			self.configEmailNoticeSubject = valuesDict.get(u'updaterEmailSubject', 'Alarm Trouble')
+			self.configEmailDisarmSubject = valuesDict.get(u'DisarmEmailSubject', 'Who Disarmed')
 
 			self.userCodeList = valuesDict.get(u'userCode', '').split(",")
 			self.userLabelList = valuesDict.get(u'userLabel', '').split(",")
@@ -925,6 +934,7 @@ class Plugin(indigo.PluginBase):
 
 		# Parse responses based on cmd value
 		#
+		
 		if cmd == '500':
 			self.mylogger.log(3, u"ACK for cmd %s." % dat)
 			self.cmdAck = dat
@@ -1086,8 +1096,8 @@ class Plugin(indigo.PluginBase):
 				(partition, zone) = (int(m.group(1)), int(m.group(2)))
 				self.updateZoneState(zone, kZoneStateTripped)
 				if (len(self.trippedZoneList) == 0):
-					if "DSCalarmMemory" in indigo.variables:
-						indigo.variable.updateValue("DSCalarmMemory", value ="")
+					if "DSC_Alarm_Memory" in indigo.variables:
+						indigo.variable.updateValue("DSC_Alarm_Memory", value ="")
 				if zone not in self.trippedZoneList:
 					self.trippedZoneList.append(zone)
 					self.sendZoneTrippedEmail()
@@ -1095,8 +1105,8 @@ class Plugin(indigo.PluginBase):
 					for zoneNum in self.trippedZoneList:
 						zone = indigo.devices[self.zoneList[zoneNum]]
 						indigoVar += (zone.name + "; ")
-					if "DSCalarmMemory" in indigo.variables:
-						indigo.variable.updateValue("DSCalarmMemory", indigoVar)
+					if "DSC_Alarm_Memory" in indigo.variables:
+						indigo.variable.updateValue("DSC_Alarm_Memory", indigoVar)
 					self.triggerEvent(u'eventZoneTripped')
 
 		elif cmd == '602':
@@ -1315,8 +1325,8 @@ class Plugin(indigo.PluginBase):
 			#keyp = indigo.devices[self.keypadList[partition]]
 			#LEDMemoryState = keyp.states["LEDMemory"]
 			self.updateKeypad(partition, u'LEDMemory', 'off')
-			if "DSCalarmMemory" in indigo.variables:
-				indigo.variable.updateValue("DSCalarmMemory", value = "no tripped zones")
+			if "DSC_Alarm_Memory" in indigo.variables:
+				indigo.variable.updateValue("DSC_Alarm_Memory", value = "no tripped zones")
 			self.speak('speakTextArming')
 
 		elif cmd == '657':
@@ -1419,7 +1429,8 @@ class Plugin(indigo.PluginBase):
 				if keyu:
 					keyu = " '" + keyu +"'"
 				self.mylogger.log(1, u"Alarm Panel Disarmed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
-
+				self.sendEmailDisarm(u"Alarm Panel Disarmed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
+				
 				# self.trippedZoneList = []    #We do not want to delete list of tripped zones here
 				self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
 				self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateDisarmed)
@@ -1787,6 +1798,25 @@ class Plugin(indigo.PluginBase):
 
 		indigo.server.sendEmailTo(self.configEmailUrgent, subject=self.configEmailUrgentSubject, body=theBody)
 
+########################################################################################
+############# Kidney514 ##########  Sending email of who is disarming
+########################################################################################
+
+	def sendEmailDisarm(self, bodyText):
+
+		if len(self.configEmailDisarm) == 0:
+			return
+
+		self.mylogger.log(1, u"Sending Disarmed by: email to %s." % self.configEmailDisarm)
+
+		contentPrefix = self.pluginPrefs.get(u'EmailDisarmContent', '')
+		if len(contentPrefix) > 0:
+			bodyText = contentPrefix + "\n\n" + bodyText
+
+		indigo.server.sendEmailTo(self.configEmailDisarm, subject=self.configEmailDisarmSubject, body=bodyText)
+
+########################################################################################
+########################################################################################
 
 
 	def sendTroubleEmail(self, bodyText):
@@ -1841,7 +1871,7 @@ class Plugin(indigo.PluginBase):
 
 	def sayThis(self, text):
 		self.mylogger.log(3, u"SAY: %s" % text)
-		#The default variable is DSCalarmText
+		#The default variable is DSC_Alarm_Text
 		if self.configSpeakVariable is not None:
 			if self.configSpeakVariable in indigo.variables:
 				indigo.variable.updateValue(self.configSpeakVariable, value=text)
@@ -2092,6 +2122,7 @@ class Plugin(indigo.PluginBase):
 
 						elif cmdType == kCmdThermoSet:
 							self.setThermostat(data)
+							del self.txCmdList[0]
 					else:
 						(rxRsp, rxData) = self.readPacket()
 						if rxRsp == '-':
