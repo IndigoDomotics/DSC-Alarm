@@ -18,6 +18,16 @@
 		<CallbackMethod>methodArmAway</CallbackMethod>
 	</Action>
 
+	<Action id="actionArmStayForce" deviceFilter="self.alarmKeypad">
+		<Name>Arm Alarm in Forced Stay Mode – EVL only</Name>
+		<CallbackMethod>methodArmStayForce</CallbackMethod>
+	</Action>
+
+	<Action id="actionArmAwayForce" deviceFilter="self.alarmKeypad">
+		<Name>Arm Alarm in Forced Away Mode – EVL only</Name>
+		<CallbackMethod>methodArmAwayForce</CallbackMethod>
+	</Action>
+
 	<Action id="actionArmGlobal" deviceFilter="self.alarmKeypad">
 		<Name>Arm Alarm in Away Global Mode</Name>
 		<CallbackMethod>methodArmGlobal</CallbackMethod>

@@ -239,7 +239,7 @@
 	</Field>
 
 	<Field type="label" id="speakToHelp" fontColor="darkgray" fontSize="small" visibleBindingId="speakToVariableEnabled" visibleBindingValue="true" alignWithControl="true">
-		<Label>Select a variable above (e.g. DSCalarmText) if you'd prefer to have the speak text put into the variable rather than be spoken by the Indigo server. Useful for sending alarm notices in Indigo actions.</Label>
+		<Label>Select a variable above (e.g. DSC_Alarm_Text) if you'd prefer to have the speak text put into the variable rather than be spoken by the Indigo server. Useful for sending alarm notices in Indigo actions.</Label>
 	</Field>
 
 	<Field id="space4" type="label" hidden="true">
