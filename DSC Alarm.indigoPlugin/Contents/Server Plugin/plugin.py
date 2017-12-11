@@ -109,12 +109,17 @@ class Plugin(indigo.PluginBase):
 		self.configKeepTimeSynced = True
 		self.troubleCode = 0
 		self.troubleClearedTimer = 0
+		if "DSC" not in indigo.variables.folders:
+			indigo.variables.folder.create("DSC")
 		if "DSC_Alarm_Text" not in indigo.variables:
-			indigo.variable.create("DSC_Alarm_Text", value="")
+			indigo.variable.create("DSC_Alarm_Text", value="", folder="DSC")
 		if "DSC_Alarm_Memory" not in indigo.variables:
-			indigo.variable.create("DSC_Alarm_Memory", value="no tripped zones")
+			indigo.variable.create("DSC_Alarm_Memory", value="no tripped zones", folder="DSC")
 		if "DSC_Command" not in indigo.variables:
-			indigo.variable.create("DSC_Command", value="#")
+			indigo.variable.create("DSC_Command", value="#", folder="DSC")
+		if "DSC_Last_User_Disarm" not in indigo.variables:
+			indigo.variable.create("DSC_Last_User_Disarm", value="", folder="DSC")
+
 
 
 
@@ -342,6 +347,64 @@ class Plugin(indigo.PluginBase):
 		self.txCmdList.append((kCmdNormal, '030' + keyp))
 
 
+	def methodArmStayForce(self, action, dev):
+		keypname = str(dev.pluginProps['partitionName'])
+		keypname = " '" + keypname + "'"
+		keyp = dev.pluginProps["partitionNumber"]
+		keypstate = str(dev.states['state'])
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
+		if keypstate == kAlarmStateArmed:
+			self.mylogger.log(1, u"The Selected Partition is Already Armed.")
+			return
+		if keyp !="1": #this sets all zones to nobypass if they are in partition 2-8, since those partitions do not report zone bypass status
+			tx = "".join(["071", keyp, "*100#"])
+			self.mylogger.log(3, u"We have partition 2-8 and will cancel all bypass")
+			self.txCmdList.append((kCmdNormal, tx))
+			self.sleep(3) #add delay if keybus buffer overruns
+		for zoneNum in self.zoneList.keys():
+			zone = indigo.devices[self.zoneList[zoneNum]]
+			zonePartition = zone.pluginProps['zonePartition']
+			if zone.states[u'state.open'] is True and zone.states[u'bypass'] == kZoneBypassNo and zonePartition == keyp:
+				self.mylogger.log(1, u"Received Zone Bypass Action for Zone '%s' in Partition %s%s." % (zone.name, keyp, keypname))
+				zoneNum = str(zoneNum).zfill(2)
+				tx = "".join(["071", keyp, "*1", zoneNum, "#"])
+				self.txCmdList.append((kCmdNormal, tx))
+				self.sleep(2) #add delay if keybus buffer overruns
+		self.mylogger.log(1, u"Arming Alarm in Forced Stay Mode. (Partition %s%s)" % (keyp, keypname))
+		self.txCmdList.append((kCmdNormal, '031' + keyp))
+
+
+	def methodArmAwayForce(self, action, dev):
+		keypname = str(dev.pluginProps['partitionName'])
+		keypname = " '" + keypname + "'"
+		keyp = dev.pluginProps["partitionNumber"]
+		keypstate = str(dev.states['state'])
+		if self.useSerial is True:
+			self.mylogger.logError('This Action does not work with IT-100.')
+			return
+		if keypstate == kAlarmStateArmed:
+			self.mylogger.log(1, u"The Selected Partition is Already Armed.")
+			return
+		if keyp !="1": #this sets all zones to nobypass if they are in partition 2-8, since those partitions do not report zone bypass status
+			tx = "".join(["071", keyp, "*100#"])
+			self.mylogger.log(3, u"We have partition 2-8 and will cancel all bypass")
+			self.txCmdList.append((kCmdNormal, tx))
+			self.sleep(3) #add delay if keybus buffer overruns
+		for zoneNum in self.zoneList.keys():
+			zone = indigo.devices[self.zoneList[zoneNum]]
+			zonePartition = zone.pluginProps['zonePartition']
+			if zone.states[u'state.open'] is True and zone.states[u'bypass'] == kZoneBypassNo and zonePartition == keyp:
+				self.mylogger.log(1, u"Received Zone Bypass Action for Zone '%s' in Partition %s%s." % (zone.name, keyp, keypname))
+				zoneNum = str(zoneNum).zfill(2)
+				tx = "".join(["071", keyp, "*1", zoneNum, "#"])
+				self.txCmdList.append((kCmdNormal, tx))
+				self.sleep(2) #add delay if keybus buffer overruns
+		self.mylogger.log(1, u"Arming Alarm in Forced Away Mode. (Partition %s%s)" % (keyp, keypname))
+		self.txCmdList.append((kCmdNormal, '030' + keyp))
+
+
 	def methodArmGlobal(self, action):
 		#this action arms all defined partitions in away mode.
 		self.mylogger.log(1, u"Arming Alarm in Global Mode (All Partitions).")
@@ -438,6 +501,8 @@ class Plugin(indigo.PluginBase):
 		key = str(key).zfill(2)
 		tx = "".join(["071", keyp, "*1", key, "#"])
 		self.txCmdList.append((kCmdNormal, tx))
+		#This is a toggle action, i.e. already bypassed zones will turn to non-bypassed state.
+		#Zones in partition 2-8 do not report bypass status, therefore there will be no zone state update.
 
 
 	def methodBypassZoneCancel(self, action, dev):
@@ -828,6 +893,7 @@ class Plugin(indigo.PluginBase):
 		if self.port.isOpen() is True:
 			self.port.flushInput()
 			self.port.timeout = 1
+			self.mylogger.log(1, u"Communication established")
 			return True
 
 		return False
@@ -1430,6 +1496,8 @@ class Plugin(indigo.PluginBase):
 					keyu = " '" + keyu +"'"
 				self.mylogger.log(1, u"Alarm Panel Disarmed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
 				self.sendEmailDisarm(u"Alarm Panel Disarmed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
+				if "DSC_Last_User_Disarm" in indigo.variables:
+					indigo.variable.updateValue("DSC_Last_User_Disarm", value = "User " + user + keyu)
 				
 				# self.trippedZoneList = []    #We do not want to delete list of tripped zones here
 				self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
