@@ -25,7 +25,7 @@
 				</List>
 			</Field>
 			<Field id="zoneTypeHint" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-				<Label>The Zone Type has no effect at the moment.</Label>
+				<Label>The Zone Type has limited effect at the moment.</Label>
 			</Field>
 			
 			<Field id="space1" type="label">
@@ -261,18 +261,28 @@
 			</State>		
 			<State id="AnyMemberLastChangedTimer">
 				<ValueType>Integer</ValueType>
-				<TriggerLabel>Minutes Since Any Zone's State Changed ...</TriggerLabel>
-				<TriggerLabelPrefix>Any Zone Member Changed Timer is</TriggerLabelPrefix>
-				<ControlPageLabel>Any Zone Member Changed Timer</ControlPageLabel>
-        		<ControlPageLabelPrefix>Any Zone Member Changed Timer is</ControlPageLabelPrefix>
+				<TriggerLabel>Minutes Since Any Member's State Changed ...</TriggerLabel>
+				<TriggerLabelPrefix>Any Member Changed Timer is</TriggerLabelPrefix>
+				<ControlPageLabel>Any Member Changed Timer (mins.)</ControlPageLabel>
+        		<ControlPageLabelPrefix>Any Member Changed Timer is</ControlPageLabelPrefix>
 			</State>
+	        <State id="AnyMemberLastChangedShort">
+	            <ValueType>String</ValueType>
+	            <TriggerLabel>Member Changed Short State Changed ...</TriggerLabel>
+	            <ControlPageLabel>Member Changed Short State</ControlPageLabel>
+ 	        </State>         
 			<State id="EntireGroupLastChangedTimer">
 				<ValueType>Integer</ValueType>
 				<TriggerLabel>Minutes Since Group's State Changed ...</TriggerLabel>
 				<TriggerLabelPrefix>Entire Group Changed Timer is</TriggerLabelPrefix>
-				<ControlPageLabel>Zone Group Timer</ControlPageLabel>
+				<ControlPageLabel>Zone Group Timer (mins.)</ControlPageLabel>
         		<ControlPageLabelPrefix>Zone Group Timer is</ControlPageLabelPrefix>
 			</State>			
+	        <State id="EntireGroupLastChangedShort">
+	            <ValueType>String</ValueType>
+	            <TriggerLabel>Group Changed Short State Changed ...</TriggerLabel>
+	            <ControlPageLabel>Group Changed Short State</ControlPageLabel>
+ 	        </State>         
 		</States>
 		
 	</Device>

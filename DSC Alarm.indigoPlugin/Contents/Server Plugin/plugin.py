@@ -119,7 +119,10 @@ class Plugin(indigo.PluginBase):
 			indigo.variable.create("DSC_Command", value="#", folder="DSC")
 		if "DSC_Last_User_Disarm" not in indigo.variables:
 			indigo.variable.create("DSC_Last_User_Disarm", value="", folder="DSC")
-
+		if "DSC_Last_Zone_Active" not in indigo.variables:
+			indigo.variable.create("DSC_Last_Zone_Active", value="", folder="DSC")
+		if "DSC_Last_Motion_Active" not in indigo.variables:
+			indigo.variable.create("DSC_Last_Motion_Active", value="", folder="DSC")
 
 
 
@@ -155,6 +158,12 @@ class Plugin(indigo.PluginBase):
 
 			if dev.states[u'state'] == 0:
 				dev.updateStateOnServer(key=u"state", value=kZoneGroupStateClosed)
+				
+			if 'AnyMemberLastChangedShort' not in dev.states:	
+				dev.stateListOrDisplayStateIdChanged()
+
+			if 'EntireGroupLastChangedShort' not in dev.states:	
+				dev.stateListOrDisplayStateIdChanged()
 
 		elif dev.deviceTypeId == u'alarmZone':
 			if 'zoneNumber' not in props:
@@ -371,7 +380,7 @@ class Plugin(indigo.PluginBase):
 				zoneNum = str(zoneNum).zfill(2)
 				tx = "".join(["071", keyp, "*1", zoneNum, "#"])
 				self.txCmdList.append((kCmdNormal, tx))
-				self.sleep(2) #add delay if keybus buffer overruns
+				self.sleep(3) #add delay if keybus buffer overruns
 		self.mylogger.log(1, u"Arming Alarm in Forced Stay Mode. (Partition %s%s)" % (keyp, keypname))
 		self.txCmdList.append((kCmdNormal, '031' + keyp))
 
@@ -626,6 +635,8 @@ class Plugin(indigo.PluginBase):
 			self.mylogger.log(3, u"Manual timer reset for alarm zone group \"%s\"" % zoneGrp.name)
 			zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedTimer", value=0)
 			zoneGrp.updateStateOnServer(key=u"EntireGroupLastChangedTimer", value=0)
+			zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedShort", value="0m")
+			zoneGrp.updateStateOnServer(key=u"EntireGroupLastChangedShort", value="0m")
 
 
 	######################################################################################
@@ -915,7 +926,6 @@ class Plugin(indigo.PluginBase):
 		except:
 			self.mylogger.logError('Connection RX Problem, plugin quitting')
 			exit()
-
 		return data
 
 
@@ -1329,8 +1339,11 @@ class Plugin(indigo.PluginBase):
 
 		elif cmd == '653':
 			# Partition Ready - Forced Arming Enabled
-			# We don't do anything with this now.
-			pass
+			self.mylogger.log(3, u"Partition %d Ready" % int(dat))
+			partition = int(dat)
+			self.updateKeypad(partition, u'ReadyState', kReadyStateTrue)
+			self.updateKeypad(partition, u'LEDReady', 'on')
+			# This reports ready state only for keypads i.e. partitions that are ready.
 
 		elif cmd == '654':
 			# partition is in alarm due to zone violations or panic & fire alarm
@@ -1634,7 +1647,7 @@ class Plugin(indigo.PluginBase):
 				self.troubleCode = newCode
 				if self.troubleCode > 0:
 					body = "Trouble Code Received:\n"
-					if self.troubleCode & 1: body += "- Service is Required\n"
+					if self.troubleCode & 1: body += "- Service is Required. Check Keypad for more Information.\n"
 					if self.troubleCode & 2: body += "- AC Power Lost\n"
 					if self.troubleCode & 4: body += "- Telephone Line Fault\n"
 					if self.troubleCode & 8: body += "- Failure to Communicate\n"
@@ -1704,6 +1717,16 @@ class Plugin(indigo.PluginBase):
 			m = re.search(r'^(..)(..)(..)$', dat)
 			if m:
 				self.mylogger.log(3, u"DSC Software Version %s.%s" % (m.group(1), m.group(2)))
+				
+		elif cmd == '912':
+			self.mylogger.logError(u"Command Output Pressed")
+
+		elif cmd == '921':
+			self.mylogger.logError(u"Master Code Required")
+
+		elif cmd == '922':
+			self.mylogger.logError(u"Installers Code Required")
+
 		else:
 			#self.mylogger.log(3, u"RX: %s" % data)
 			self.mylogger.log(3, u"Unrecognized command received (Cmd:%s Dat:%s Sum:%d)" % (cmd, dat, sum))
@@ -1743,6 +1766,7 @@ class Plugin(indigo.PluginBase):
 		zoneGrp = indigo.devices[zoneGroupDevId]
 
 		zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedTimer", value=0)
+		zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedShort", value="0m")
 
 		newState = kZoneGroupStateClosed
 		for zoneId in self.zoneGroupList[zoneGroupDevId]:
@@ -1755,6 +1779,7 @@ class Plugin(indigo.PluginBase):
 
 		if zoneGrp.states[u'state'] != newState:
 			zoneGrp.updateStateOnServer(key=u"EntireGroupLastChangedTimer", value=0)
+			zoneGrp.updateStateOnServer(key=u"EntireGroupLastChangedShort", value="0m")
 			zoneGrp.updateStateOnServer(key=u"state", value=newState)
 
 
@@ -1764,7 +1789,7 @@ class Plugin(indigo.PluginBase):
 
 		if zoneKey in self.zoneList.keys():
 			zone = indigo.devices[self.zoneList[zoneKey]]
-			#zoneType = zone.pluginProps['zoneType']
+			zoneType = zone.pluginProps['zoneType']
 			#zonePartition = zone.pluginProps['zonePartition']
 
 			# If the new state is different from the old state
@@ -1774,6 +1799,7 @@ class Plugin(indigo.PluginBase):
 				zone.updateStateOnServer(key=u"LastChangedShort", value="0m")
 				zone.updateStateOnServer(key=u"LastChangedTimer", value=0)
 				zone.updateStateOnServer(key=u"state", value=newState)
+				time = datetime.now().strftime("%H:%M:%S, %Y-%m-%d")
 
 				# Check if this zone is assigned to a zone group so we can update it
 				for devId in self.zoneGroupList:
@@ -1790,8 +1816,16 @@ class Plugin(indigo.PluginBase):
 				if zone.pluginProps['zoneLogChanges'] == 1:
 					if newState == kZoneStateOpen:
 						self.mylogger.log(1, u"Alarm Zone '%s' Opened." % zone.name)
+						if zoneType != "zoneTypeMotion":
+							indigo.variable.updateValue("DSC_Last_Zone_Active", value = "%s Opened at %s." % (zone.name, time))
 					elif newState == kZoneStateClosed:
 						self.mylogger.log(1, u"Alarm Zone '%s' Closed." % zone.name)
+						if zoneType != "zoneTypeMotion":
+							indigo.variable.updateValue("DSC_Last_Zone_Active", value = "%s Closed at %s." % (zone.name, time))
+						
+				if zoneType == "zoneTypeMotion":
+					indigo.variable.updateValue("DSC_Last_Motion_Active", value = "%s at %s." % (zone.name, time))
+					
 
 	def updateZoneBypass(self, zoneKey, newState):
 
@@ -2027,12 +2061,12 @@ class Plugin(indigo.PluginBase):
 		# If it's less than 49 hours then show XXh
 		elif minutes < 2881:
 			return str(int(minutes / 60)) + 'h'
-		# If it's less than 100 days then show XXd
-		elif minutes < 144000:
+		# If it's less than 365 days then show XXd
+		elif minutes < 525601:
 			return str(int(minutes / 1440)) + 'd'
-		# If it's anything more than one hundred days then show nothing
+		# If it's anything more than 365 days then show XXmonths
 		else:
-			return ''
+			return str(int(minutes / 43800)) + 'months'
 
 
 
@@ -2233,8 +2267,10 @@ class Plugin(indigo.PluginBase):
 					zoneGroupDevice = indigo.devices[zoneGroupDeviceId]
 					tmr = zoneGroupDevice.states[u"AnyMemberLastChangedTimer"] + 1
 					zoneGroupDevice.updateStateOnServer(key=u"AnyMemberLastChangedTimer", value=tmr)
+					zoneGroupDevice.updateStateOnServer(key=u"AnyMemberLastChangedShort", value=self.getShortTime(tmr))
 					tmr = zoneGroupDevice.states[u"EntireGroupLastChangedTimer"] + 1
 					zoneGroupDevice.updateStateOnServer(key=u"EntireGroupLastChangedTimer", value=tmr)
+					zoneGroupDevice.updateStateOnServer(key=u"EntireGroupLastChangedShort", value=self.getShortTime(tmr))
 
 
 		self.closePort()
