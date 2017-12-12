@@ -1,6 +1,6 @@
 # DSC Alarm Plugin
 
-This plugin interfaces Indigo to a DSC PowerSeries alarm system using one of the interfaces below. It lets Indigo see the status of the entire alarm system. Triggers can be created for any alarm or zone change, actions can be created to Arm, Disarm, or trip the alarm. 
+This plugin interfaces Indigo to a DSC PowerSeries alarm system using one of the interfaces below. It lets Indigo see the status of the entire alarm system. Triggers can be created for any alarm or zone change, actions can be created to Arm, Disarm, or trip the alarm.
 
 The plugin also maintains timers to keep track of how long any doors and windows have been opened, as well as how long it's been since it's seen activity in certain areas. These timers can be used to turn off the HVAC system if the wife is airing out the house, or turn off lights in areas of the house that aren't occupied.
 
@@ -23,7 +23,7 @@ If you want to contribute, just clone the repository in your account, make your 
 
 Perceptive Automation is hosting this repository and will do minimal management. Unless a pull request has no description or upon cursory observation has some obvious issue, pull requests will be accepted without any testing by us. We may choose to delegate commit privledges to other users at some point in the future.
 
-Perceptive Automation doesn't guarantee anything about this plugin - that this plugin works or does what the description above states, so use at your own risk. 
+Perceptive Automation doesn't guarantee anything about this plugin - that this plugin works or does what the description above states, so use at your own risk.
 
 ## Plugin ID
 

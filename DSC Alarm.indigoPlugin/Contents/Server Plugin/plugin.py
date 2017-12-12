@@ -1000,7 +1000,7 @@ class Plugin(indigo.PluginBase):
 
 		# Parse responses based on cmd value
 		#
-		
+
 		if cmd == '500':
 			self.mylogger.log(3, u"ACK for cmd %s." % dat)
 			self.cmdAck = dat
@@ -1498,7 +1498,7 @@ class Plugin(indigo.PluginBase):
 				self.sendEmailDisarm(u"Alarm Panel Disarmed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
 				if "DSC_Last_User_Disarm" in indigo.variables:
 					indigo.variable.updateValue("DSC_Last_User_Disarm", value = "User " + user + keyu)
-				
+
 				# self.trippedZoneList = []    #We do not want to delete list of tripped zones here
 				self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
 				self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateDisarmed)
@@ -1743,6 +1743,7 @@ class Plugin(indigo.PluginBase):
 		zoneGrp = indigo.devices[zoneGroupDevId]
 
 		zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedTimer", value=0)
+		zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedShort", value="0m")
 
 		newState = kZoneGroupStateClosed
 		for zoneId in self.zoneGroupList[zoneGroupDevId]:
@@ -1755,6 +1756,7 @@ class Plugin(indigo.PluginBase):
 
 		if zoneGrp.states[u'state'] != newState:
 			zoneGrp.updateStateOnServer(key=u"EntireGroupLastChangedTimer", value=0)
+			zoneGrp.updateStateOnServer(key=u"EntireGroupLastChangedShort", value="0m")
 			zoneGrp.updateStateOnServer(key=u"state", value=newState)
 
 
@@ -2233,8 +2235,10 @@ class Plugin(indigo.PluginBase):
 					zoneGroupDevice = indigo.devices[zoneGroupDeviceId]
 					tmr = zoneGroupDevice.states[u"AnyMemberLastChangedTimer"] + 1
 					zoneGroupDevice.updateStateOnServer(key=u"AnyMemberLastChangedTimer", value=tmr)
+					zoneGroupDevice.updateStateOnServer(key=u"AnyMemberLastChangedShort", value=self.getShortTime(tmr))
 					tmr = zoneGroupDevice.states[u"EntireGroupLastChangedTimer"] + 1
 					zoneGroupDevice.updateStateOnServer(key=u"EntireGroupLastChangedTimer", value=tmr)
+					zoneGroupDevice.updateStateOnServer(key=u"EntireGroupLastChangedShort", value=self.getShortTime(tmr))
 
 
 		self.closePort()
