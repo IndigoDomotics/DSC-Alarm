@@ -2061,12 +2061,12 @@ class Plugin(indigo.PluginBase):
 		# If it's less than 49 hours then show XXh
 		elif minutes < 2881:
 			return str(int(minutes / 60)) + 'h'
-		# If it's less than 365 days then show XXd
-		elif minutes < 525601:
+		# If it's less than 100 days then show XXd
+		elif minutes < 144000:
 			return str(int(minutes / 1440)) + 'd'
-		# If it's anything more than 365 days then show XXmonths
+		# If it's anything more than one hundred days then show nothing
 		else:
-			return str(int(minutes / 43800)) + 'months'
+			return ''
 
 
 
