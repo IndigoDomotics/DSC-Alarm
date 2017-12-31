@@ -1,4 +1,3 @@
 .svn
 *.py[cod]
-
-
+.DS_Store
