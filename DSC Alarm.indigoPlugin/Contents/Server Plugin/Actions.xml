@@ -151,21 +151,21 @@
 		<CallbackMethod>methodDoorChimeDisable</CallbackMethod>
 	</Action>
 
-	<!--
-	<Action id="actionSyncTime" deviceFilter="self.alarmKeypad">
-		<Name>Sync Date/Time with Indigo</Name>
+
+	<Action id="actionSyncTime">
+		<Name>Sync Date/Time with Indigo Server</Name>
 		<CallbackMethod>methodSyncTime</CallbackMethod>
 		<ConfigUI>
 			<Field id="label1" type="label">
-				<Label>This sets the time and date on the alarm to be the same as the Indigo host computer.  Run this once every night sometime after 2AM to automatically adjust for Daylight Savings Time and to make sure the clock is kept accurate.</Label>
+				<Label>This sets the time and date on the alarm to be the same as the Indigo host computer.</Label>
 			</Field>
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label2" type="label">
-				<Label>NOTE: After executing this action it will take a few minutes for the new time to be reflected on your alarm keypads.</Label>
+				<Label>NOTE: After executing this action it will take up to 4 minutes for the new time to be reflected on your alarm keypads.</Label>
 			</Field>
 		</ConfigUI>
 	</Action>
-	-->
+
 
 	<Action id="actionAdjustThermostat" deviceFilter="self.alarmTemp">
 		<Name>Adjust Thermostat</Name>

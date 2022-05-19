@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <MenuItems>
+<!-- 
     <MenuItem id="menu1">
         <Name>Check for Updates</Name>
         <CallbackMethod>checkForUpdates</CallbackMethod>
     </MenuItem>
+ -->
 </MenuItems>

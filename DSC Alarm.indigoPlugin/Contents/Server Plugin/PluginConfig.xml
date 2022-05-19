@@ -1,9 +1,6 @@
 <?xml version="1.0"?>
 <PluginConfig>
-	<!-- You can add a SupportURL element inside here if you want a context
-		 sensitive help link on the config UI - otherwise it will just link
-		 to the URL specified in the Info.plist. -->
-	<!-- <SupportURL>http://www.frightideas.com</SupportURL> -->
+    <SupportURL>https://github.com/IndigoDomotics/DSC-Alarm</SupportURL>
 
 	<Field id="infoLabel" type="label">
 		<Label>DSC Alarm Plugin:   Developed by Travis Cook; modified by Monstergerm</Label>
@@ -18,13 +15,13 @@
 		</List>
 	</Field>
 
-	<!-- serial specific settings -->
+	<!-- serial port specific settings -->
 	<Field type="menu" id="serialPort" visibleBindingId="configInterface" visibleBindingValue="serial">
 		<Label>Serial Port:</Label>
 		<List class="indigo.serialPorts" filter="indigo.ignoreBluetooth" />
 	</Field>
 
-	<!-- 2DS specific settings -->
+	<!-- Password specific settings -->
 
 	<Field id="TwoDS_Address" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods">
 		<Label>IP Address:</Label>
@@ -40,55 +37,67 @@
 		<Label>(default = user; max. 6 char.; except EVL-4 10 char.)</Label>
 	</Field>
 
-	<Field id="space5" type="label">
-		<Label></Label>
-	</Field>
 
 	<Field id="code" type="textfield" defaultValue="1234" secure="true">
 		<Label>Disarm Code:</Label>
+	</Field>
+	<Field id="codeLabel" type="label" visibleBindingId="code" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>This can be a password unique for Indigo Users, as long as it is programmed into the DSC panel.</Label>
 	</Field>
 
 	<Field
 		id = "separator00" 
 		type = "separator"/>
 
-	<Field id="emailUrgentNote" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Enter an address and subject below to receive an email when the alarm is tripped or panic/duress is triggered. Separate multiple email addresses with ;</Label>
+	<!-- email settings -->
+	<Field
+		id = "email" type = "checkbox" defaultValue="false">
+		<Label>Email Notifications:</Label>
+		<Description>Show/Hide</Description>
 	</Field>
-	<Field id="emailUrgent" type="textfield">
-		<Label>Urgent Email:</Label>
+
+	<Field
+		id = "note00" 
+		type = "label"
+		fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Fill out email settings.</Label>
 	</Field>
-	<Field id="emailUrgentSubject" type="textfield" defaultValue="Alarm Tripped" >
+
+	<Field id="emailUrgentNote" type="label" visibleBindingId = "email" visibleBindingValue = "true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Enter an address, subject and content below to receive an email when the alarm is tripped or panic/duress is triggered. Separate multiple email addresses with ;</Label>
+	</Field>
+	<Field id="emailUrgent" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" >
+		<Label>Urgent Email Recipient:</Label>
+	</Field>
+	<Field id="emailUrgentSubject" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" defaultValue="Alarm Tripped" >
 		<Label>Urgent Email Subject:</Label>
 	</Field>
-	<!-- The setting below is for berkinet's use -->
-	<Field id="emailUrgentContent" type="textfield" hidden="true">
+	<!-- Optional; either hide or not -->
+	<Field id="emailUrgentContent" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" hidden="false">
 		<Label>Urgent Email Content:</Label>
 	</Field>
 
 
-	<Field id="space7" type="label">
+	<Field id="space7" type="label" visibleBindingId = "email" visibleBindingValue = "true" >
 		<Label></Label>
 	</Field>
 
 
-	<Field id="emailNoticeNote" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Enter an address and subject below to receive an email for plugin updates and less critical alarm events (Power Failure, Low Battery, Trouble, Faults).</Label>
+	<Field id="emailNoticeNote" type="label" visibleBindingId = "email" visibleBindingValue = "true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Email for less critical alarm events (Power Failure, Low Battery, Trouble, Faults).</Label>
 	</Field>
-	<!-- This is really the email text box for the updater but we'll share it this time -->
-	<Field id="updaterEmail" type="textfield">
-		<Label>Notice Email:</Label>
+	<Field id="emailNotice" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" >
+		<Label>Notice Email Recipient:</Label>
 	</Field>
-	<Field id="updaterEmailSubject" type="textfield" defaultValue="Alarm Notice">
+	<Field id="emailNoticeSubject" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" defaultValue="Alarm Notice">
 		<Label>Notice Email Subject:</Label>
 	</Field>
-
-	<!-- The setting below is for berkinet's use -->
-	<Field id="updaterEmailContent" type="textfield" hidden="true">
+	<!-- Optional; either hide or not -->
+	<Field id="emailNoticeContent" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" hidden="false">
 		<Label>Notice Email Content:</Label>
 	</Field>
 
-		<Field id="space8" type="label">
+		<Field id="space8" type="label" visibleBindingId = "email" visibleBindingValue = "true" >
 		<Label></Label>
 	</Field>
 
@@ -96,23 +105,22 @@
 ############# Kidney514 ##########  Sending email of who is disarming
 ########################################################################################
 
-	<Field id="emailDisarmNote" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Enter an address and subject below to receive an email to know who is Disarming</Label>
+	<Field id="emailDisarmNote" type="label" visibleBindingId = "email" visibleBindingValue = "true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Email about who is Disarming</Label>
 	</Field>
-	<!-- This is really the email text box for the updater but we'll share it this time -->
-	<Field id="EmailDisarm" type="textfield">
-		<Label>Disarm Email:</Label>
+	<Field id="EmailDisarm" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" >
+		<Label>Disarm Email Recipient:</Label>
 	</Field>
-	<Field id="EmailDisarmSubject" type="textfield" defaultValue="Disarm Notice">
+	<Field id="EmailDisarmSubject" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" defaultValue="Disarm Notice">
 		<Label>Disarm Email Subject:</Label>
 	</Field>
-
-	<!-- The setting below is for berkinet's use -->
-	<Field id="EmailDisarmContent" type="textfield" hidden="true">
+	<!-- Optional; either hide or not -->
+	<Field id="EmailDisarmContent" type="textfield" visibleBindingId = "email" visibleBindingValue = "true" hidden="false">
 		<Label>Disarm Email Content:</Label>
 	</Field>
 ########################################################################################
 
+	<!-- Time sync and Custom icon settings -->
 	<Field
 		id = "separator01" 
 		type = "separator"/>
@@ -124,10 +132,18 @@
 		<Label>Indigo will update the alarm panel's time and date every night at 3am.</Label>
 	</Field>
 
+	<Field id="customStateIcons" type="checkbox" defaultValue="true">
+		<Label>Custom State Icons:</Label>
+	</Field>
+		<Field id="customStateNote" type="label" visibleBindingId="customStateIcons" visibleBindingValue="true" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Indigo client UI and Indigo Touch will show custom state image icons for alarm zones.</Label>
+	</Field>
+
 	<Field
 		id = "separator02" 
 		type = "separator"/>
 
+	<!-- User code settings -->
 	<Field
 		id = "userCodeLabeling" 
 		type = "checkbox">
@@ -139,7 +155,7 @@
 		id = "note0" 
 		type = "label"
 		fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Assign each user code a label.</Label>
+		<Label>Assign a descriptive user label to each user code.</Label>
 	</Field>
 
 	<Field
@@ -174,8 +190,9 @@
 		id = "separator03" 
 		type = "separator"/>
 
+	<!-- Speaking and variable settings -->
 	<Field id="note5" type="label" alignWithControl="false">
-		<Label>       Speak and Speak</Label>
+		<Label>    Speaking and Speak</Label>
 	</Field>
 
 	<Field
@@ -255,32 +272,22 @@
 	<Field id="variableState" type="textfield" hidden="true"></Field>
 
 
+	<!-- Debug settings -->
 	<Field id="simpleSeparator2" type="separator"/>
 	<Field id="midLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
 		<Label>Set the level of information recorded to the Indigo log.</Label>
 	</Field>
 
-	<Field id="showDebugInfo1" type="menu" defaultValue="1">
-		<Label>Logging level</Label>
-		<List>
-			<Option value="0">None</Option>
-			<Option value="1">Normal</Option>
-			<Option value="2">Verbose</Option>
-			<Option value="3">Debug</Option>
-			<Option value="4">Intense Debug</Option>
-		</List>
-	</Field>
+    <Field id="logLevel" type="menu" defaultValue="20">
+        <Label>Event Logging Level:</Label>
+        <List>
+            <Option value="5">Detailed Debugging Messages</Option>
+            <Option value="10">Debugging Messages</Option>
+            <Option value="20">Informational Messages</Option>
+            <Option value="30">Warning Messages</Option>
+            <Option value="40">Error Messages</Option>
+            <Option value="50">Critical Errors Only</Option>
+        </List>
+    </Field>            
 
-	<Field id="v0" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="0" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>No logging at all (not suggested)</Label>
-	</Field>
-	<Field id="v1" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="1" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Normal operating events</Label>
-	</Field>
-	<Field id="v2" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="2" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Detailed information</Label>
-	</Field>
-	<Field id="v3" type="label" visibleBindingId="showDebugInfo1" visibleBindingValue="3,4" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>If you are having problems with the plugin (or you are instructed by support), you can enable debugging Use with caution. This level is not suggested for regular operation.</Label>
-	</Field>
 </PluginConfig>

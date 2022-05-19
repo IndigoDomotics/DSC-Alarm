@@ -5,6 +5,14 @@ This plugin interfaces Indigo to a DSC PowerSeries alarm system using one of the
 The plugin also maintains timers to keep track of how long any doors and windows have been opened, as well as how long it's been since it's seen activity in certain areas. These timers can be used to turn off the HVAC system if the wife is airing out the house, or turn off lights in areas of the house that aren't occupied.
 
 ## Information and Support
+Version 2022.0.1 with changes from Monstergerm has been released. This version is compatible with Python 2 (using Server API 2.0) or Python 3 (using Server API 3.0[default]). The plugin also adds a number of minor improvements over v2.2.2.
+ Minor tweaks to code
+ Removed outdated version check code
+ Updated logging system to six levels
+ Changed time sync routine and added Time Sync Action
+ Added more zone attributes
+ Implemented custom state GUI icons for Indigo desktop app and Indigo Touch
+
 Version 2.0 with changes from Monstergerm has been released.  Read the DSC plugin v2 Release Notes.pdf file for more information.
 
 For Installation and Information details please see this [forum post](http://forums.indigodomo.com/viewtopic.php?f=56&t=10287).
