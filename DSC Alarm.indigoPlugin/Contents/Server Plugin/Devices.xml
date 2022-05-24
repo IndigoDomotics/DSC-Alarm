@@ -21,11 +21,14 @@
 					<Option value="zoneTypeFire">Fire</Option>
 					<Option value="zoneTypeWater">Water</Option>
 					<Option value="zoneTypeGas">Gas</Option>
+					<Option value="zoneTypeGlass">Glass Break</Option>
+					<Option value="zoneTypeShock">Shock</Option>
+					<Option value="zoneTypeCO">Carbon Monoxide</Option>
 					<Option value="zoneTypeOther">Other</Option>
 				</List>
 			</Field>
 			<Field id="zoneTypeHint" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-				<Label>The Zone Type has limited effect at the moment.</Label>
+				<Label>The Zone Type has limited effects at the moment (custom state image icons).</Label>
 			</Field>
 			
 			<Field id="space1" type="label">

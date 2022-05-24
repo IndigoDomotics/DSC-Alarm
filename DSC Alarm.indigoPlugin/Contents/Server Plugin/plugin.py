@@ -1,17 +1,36 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 ####################
-# DSC Alarm Plugin
-# Developed by Travis Cook and modified by Monstergerm
-# www.frightideas.com
 
+"""
+DSC Alarm Plugin
+Developed by Travis Cook and modified by Monstergerm.
+This plugin supports DSC alarm panels. It does not work with Vista 20p panels.
+Envisalink 4 is the recommended interface.
+Anything related to thermostats has not been field tested.
+The plugin can be found on Github and in the Indigo Plugin Store.
+The Github repository also shows examples for a control page, buttons for Arm and Disarm and icons for zones, bypass etc.
+https://github.com/IndigoDomotics/DSC-Alarm
+This plugin should be compatible with Python 2.7 and Python 3.10 and requires Indigo 7.0 and higher. In its default setting with API 3.0 it runs under Python 3.
+
+"""
+
+import os
+import platform
+import sys
 import re
 import time
-import indigo
 from datetime import datetime
+import logging
 import serial
-import indigoPluginUtils
-import indigoPluginUpdateChecker
+try:
+    import indigo
+except ImportError:
+    pass
+
+# Note the "indigo" module is automatically imported and made available inside
+# our global name space by the host process.
+
 
 kSocketPort = 1514
 kSocketBufferSize = 1024
@@ -44,13 +63,13 @@ kPanicStateAmbulance = u'ambulance'
 kPanicStatePanic = u'panic'
 kPanicStateDuress = u'duress'
 
-kPluginUpdateUrl = u'http://www.frightideas.com/hobbies/dscAlarm/dscAlarmVersionInfo.html'
 
 kLedIndexList = ['None', 'Ready', 'Armed', 'Memory', 'Bypass', 'Trouble', 'Program', 'Fire', 'Backlight', 'AC']
 kLedStateList = ['off', 'on', 'flashing']
 kArmedModeList = ['Away', 'Stay', 'Away, No Delay', 'Stay, No Delay']
 kPanicTypeList = ['None', 'Fire', 'Ambulance', 'Panic', 'Duress']
 kMonthList = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+kLogLevelList = ['Detailed Debug', 'Debug', 'Info', 'Warning', 'Error', 'Critical']
 
 
 kCmdNormal = 0
@@ -59,25 +78,30 @@ kPingInterval = 301
 kHoldRetryTimeMinutes = 3
 
 
-
-
-
-# Note the "indigo" module is automatically imported and made available inside
-# our global name space by the host process.
-
-################################################################################
+##########################################################################################
 class Plugin(indigo.PluginBase):
 
 	########################################
 	def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
 		indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 
-		self.mylogger = indigoPluginUtils.logger(self)
-		self.updater = indigoPluginUpdateChecker.updateChecker(self, kPluginUpdateUrl)
-
 		self.States = self.enum(STARTUP=1, HOLD=2, HOLD_RETRY=3, HOLD_RETRY_LOOP=4, BOTH_INIT=5, SO_CONNECT=6, ENABLE_TIME_BROADCAST=7, BOTH_PING=8, BOTH_POLL=9)
 		self.state = self.States.STARTUP
-		self.logLevel = 1
+
+		# ============================ Configure Logging =================================
+		try:
+			self.logLevel = int(self.pluginPrefs[u"logLevel"])
+			if self.logLevel < 5:  # convert old logging pref settings to level 20(INFO)
+				self.logLevel = logging.INFO
+				self.logger.info("we are converting old log settings")
+		except:
+			self.logLevel = logging.INFO
+		# Set the format and level handlers for the logger
+		log_format = '%(asctime)s.%(msecs)03d\t%(levelname)-10s\t%(name)s.%(funcName)-28s %(msg)s'
+		self.plugin_file_handler.setFormatter(logging.Formatter(fmt=log_format, datefmt='%Y-%m-%d %H:%M:%S'))
+		self.indigo_log_handler.setLevel(self.logLevel)
+		# ================================================================================
+
 		self.shutdown = False
 		self.configRead = False
 		self.interfaceState = 0
@@ -107,8 +131,12 @@ class Plugin(indigo.PluginBase):
 		self.userLabelDict = {}
 		self.configSpeakVariable = None
 		self.configKeepTimeSynced = True
+		self.configUseCustomIcons = True
+		self.timesyncflag = True
 		self.troubleCode = 0
 		self.troubleClearedTimer = 0
+		self.PY2 = False
+		self.PY3 = True
 		if "DSC" not in indigo.variables.folders:
 			indigo.variables.folder.create("DSC")
 		if "DSC_Alarm_Text" not in indigo.variables:
@@ -134,12 +162,30 @@ class Plugin(indigo.PluginBase):
 
 	########################################
 	def startup(self):
-		self.mylogger.log(4, u"startup called")
+		self.logger.debug(u"Startup called. Log Levels are set to \"{}\".".format(kLogLevelList[int(self.logLevel/10)]))
 		self.configRead = self.getConfiguration(self.pluginPrefs)
-		self.updater.checkVersionPoll()
+
+		spacer = " " * 35
+		environment_state = u"\n"
+		environment_state += spacer + u"="*20 + u" Initializing New Plugin Session " + u"="*54 +"\n"
+		environment_state += spacer + u"{0:<20} {1}\n".format("Plugin name:", self.pluginDisplayName)
+		environment_state += spacer + u"{0:<20} {1}\n".format("Plugin version:", self.pluginVersion)
+		environment_state += spacer + u"{0:<20} {1}\n".format("Plugin ID:", self.pluginId)
+		environment_state += spacer + u"{0:<20} {1}\n".format("Plugin Log Level:", kLogLevelList[int(self.logLevel/10)])
+		environment_state += spacer + u"{0:<20} {1}\n".format("Indigo version:", indigo.server.version)
+		environment_state += spacer + u"{0:<20} {1}\n".format("Python version:", sys.version.replace('\n', ''))
+		environment_state += spacer + u"{0:<20} {1}\n".format("Mac OS Version:", platform.mac_ver()[0])
+		environment_state += spacer + u"{0:<20} {1}\n".format("Process ID:", os.getpid())
+		environment_state += spacer + u"{0:{1}^107}\n".format("", "=")
+		self.logger.info(environment_state)
+		
+		#set PY2 and PY3 to true or false dependent on the active Python version
+		self.PY2 = sys.version_info[0] == 2
+		self.PY3 = sys.version_info[0] == 3
+
 
 	def shutdown(self):
-		self.mylogger.log(4, u"shutdown called")
+		self.logger.debug(u"Shutdown called")
 
 
 	######################################################################################
@@ -147,7 +193,7 @@ class Plugin(indigo.PluginBase):
 	######################################################################################
 
 	def deviceStartComm(self, dev):
-		self.mylogger.log(4, u"<<-- entering deviceStartComm: %s (%d - %s)" % (dev.name, dev.id, dev.deviceTypeId))
+		self.logger.threaddebug(u"<<-- entering deviceStartComm: {} ({} - {})".format(dev.name, dev.id, dev.deviceTypeId))
 
 		props = dev.pluginProps
 
@@ -158,11 +204,11 @@ class Plugin(indigo.PluginBase):
 
 			if dev.states[u'state'] == 0:
 				dev.updateStateOnServer(key=u"state", value=kZoneGroupStateClosed)
-				
-			if 'AnyMemberLastChangedShort' not in dev.states:	
+
+			if 'AnyMemberLastChangedShort' not in dev.states:
 				dev.stateListOrDisplayStateIdChanged()
 
-			if 'EntireGroupLastChangedShort' not in dev.states:	
+			if 'EntireGroupLastChangedShort' not in dev.states:
 				dev.stateListOrDisplayStateIdChanged()
 
 		elif dev.deviceTypeId == u'alarmZone':
@@ -170,10 +216,10 @@ class Plugin(indigo.PluginBase):
 				return
 
 			zone = int(props['zoneNumber'])
-			if zone not in self.zoneList.keys():
+			if zone not in list(self.zoneList.keys()):
 				self.zoneList[zone] = dev.id
 			else:
-				self.mylogger.logError("Zone %s is already assigned to another device." % zone)
+				self.logger.error(u"Zone {} is already assigned to another device.".format(zone))
 
 			# Check for new version zone states.
 			# If they're not present tell Indigo to reread the Devices.xml file
@@ -184,12 +230,12 @@ class Plugin(indigo.PluginBase):
 			if dev.states['state'] == 0:
 				dev.updateStateOnServer(key=u'state', value=kZoneStateClosed)
 
-			# If plugin is v2 we won't have a bypass key so set it to default
+			# If plugin is v2.x we won't have a bypass key so set it to default
 			if 'bypass' not in dev.states or dev.states['bypass'] == 0:
 				dev.stateListOrDisplayStateIdChanged()
 				dev.updateStateOnServer(key=u'bypass', value=kZoneBypassNo)
 
-			# If plugin is v2 we won't have a zonePartition key so set it to 1 by default
+			# If plugin is v2.x we won't have a zonePartition key so set it to 1 by default
 			if 'zonePartition' not in props:
 				props.update({'zonePartition': '1'})
 				dev.replacePluginPropsOnServer(props)
@@ -199,7 +245,7 @@ class Plugin(indigo.PluginBase):
 
 			# Check for new version properties to see if we need to refresh the device
 			if 'occupancyGroup' not in props:
-				self.mylogger.log(3, u"Adding occupancyGroup to device %s properties." % dev.name)
+				self.logger.debug(u"Adding occupancyGroup to device {} properties.".format(dev.name))
 				props.update({"occupancyGroup": 0})
 				dev.replacePluginPropsOnServer(props)
 
@@ -215,18 +261,21 @@ class Plugin(indigo.PluginBase):
 
 		elif dev.deviceTypeId == u'alarmKeypad':
 			partition = int(dev.pluginProps['partitionNumber'])
-			if partition not in self.keypadList.keys():
+			if partition not in list(self.keypadList.keys()):
 				self.keypadList[partition] = dev.id
-				self.mylogger.log(3, u"Adding keypad: %s" % self.keypadList)
+				self.logger.debug(u"Adding keypad: {}".format(self.keypadList))
 			else:
-				self.mylogger.logError("Partition is already assigned to another device.")
+				self.logger.error(u"Partition is already assigned to another device.")
 
-			# If plugin is v2 we won't have a partitionName key so set it to default
+			# If plugin is v2.x we won't have a partitionName key so set it to "Default"
 			if 'partitionName' not in dev.pluginProps:
 				props['partitionName'] = 'Default'
 				dev.replacePluginPropsOnServer(props)
 
 			dev.updateStateOnServer(key=u'state', value=kAlarmStateDisarmed)
+			if self.configUseCustomIcons is True:
+				dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)   # green circle
+				#dev.updateStateImageOnServer(indigo.kStateImageSel.Unlocked)  # red open padlock
 			dev.updateStateOnServer(key=u'ReadyState', value=kReadyStateTrue)
 			dev.updateStateOnServer(key=u'PanicState', value=kPanicStateNone)
 
@@ -242,14 +291,14 @@ class Plugin(indigo.PluginBase):
 
 		elif dev.deviceTypeId == u'alarmTemp':
 			sensor = int(dev.pluginProps['sensorNumber'])
-			if sensor not in self.tempList.keys():
+			if sensor not in list(self.tempList.keys()):
 				self.tempList[sensor] = dev
 
-		self.mylogger.log(4, u"exiting deviceStartComm -->>")
+		self.logger.threaddebug(u"exiting deviceStartComm -->>")
 
 
 	def deviceStopComm(self, dev):
-		self.mylogger.log(4, u"<<-- entering deviceStopComm: %s (%d - %s)" % (dev.name, dev.id, dev.deviceTypeId))
+		self.logger.threaddebug(u"<<-- entering deviceStopComm: {} ({} - {})".format(dev.name, dev.id, dev.deviceTypeId))
 
 		if dev.deviceTypeId == u'alarmZoneGroup':
 			if dev.id in self.zoneGroupList:
@@ -258,9 +307,9 @@ class Plugin(indigo.PluginBase):
 		elif dev.deviceTypeId == u'alarmZone':
 			if 'zoneNumber' in dev.pluginProps:
 				zone = int(dev.pluginProps['zoneNumber'])
-				if zone in self.zoneList.keys():
+				if zone in list(self.zoneList.keys()):
 					del self.zoneList[zone]
-				#self.mylogger.log(3, u"ZoneList is now: %s" % self.zoneList)
+				#self.logger.debug(u"ZoneList is now: {}".format(self.zoneList))
 
 		elif dev.deviceTypeId == u'alarmKeypad':
 			if 'partitionNumber' in dev.pluginProps:
@@ -274,36 +323,24 @@ class Plugin(indigo.PluginBase):
 				if tmp in self.tempList:
 					del self.tempList[int(dev.pluginProps['sensorNumber'])]
 
-		self.mylogger.log(4, u"exiting deviceStopComm -->>")
+		self.logger.threaddebug(u"exiting deviceStopComm -->>")
 
-
-	#def deviceUpdated(self, origDev, newDev):
-	#	self.mylogger.log(4, u"<<-- entering deviceUpdated: %s" % origDev.name)
-	#	origDev.name = newDev.name
-	#	self.mylogger.log(4, u"OrigDev now: %s" % origDev.name)
-	#	self.DigiTemp.deviceStop(origDev)
-	#	self.DigiTemp.deviceStart(newDev)
 
 	######################################################################################
 	# Indigo Trigger Start/Stop
 	######################################################################################
 
 	def triggerStartProcessing(self, trigger):
-		self.mylogger.log(4, u"<<-- entering triggerStartProcessing: %s (%d)" % (trigger.name, trigger.id))
+		self.logger.threaddebug(u"<<-- entering triggerStartProcessing: {} ({})".format(trigger.name, trigger.id))
 		self.triggerList.append(trigger.id)
-		self.mylogger.log(4, u"exiting triggerStartProcessing -->>")
+		self.logger.threaddebug(u"exiting triggerStartProcessing -->>")
 
 	def triggerStopProcessing(self, trigger):
-		self.mylogger.log(4, u"<<-- entering triggerStopProcessing: %s (%d)" % (trigger.name, trigger.id))
+		self.logger.threaddebug(u"<<-- entering triggerStopProcessing: {} ({})".format(trigger.name, trigger.id))
 		if trigger.id in self.triggerList:
-			self.mylogger.log(4, u"TRIGGER FOUND")
+			self.logger.threaddebug(u"TRIGGER FOUND")
 			self.triggerList.remove(trigger.id)
-		self.mylogger.log(4, u"exiting triggerStopProcessing -->>")
-
-	#def triggerUpdated(self, origDev, newDev):
-	#	self.mylogger.log(4, u"<<-- entering triggerUpdated: %s" % origDev.name)
-	#	self.triggerStopProcessing(origDev)
-	#	self.triggerStartProcessing(newDev)
+		self.logger.threaddebug(u"exiting triggerStopProcessing -->>")
 
 
 	######################################################################################
@@ -311,21 +348,12 @@ class Plugin(indigo.PluginBase):
 	######################################################################################
 
 	def triggerEvent(self, eventId):
-		self.mylogger.log(4, u"<<-- entering triggerEvent: %s " % eventId)
+		self.logger.threaddebug(u"<<-- entering triggerEvent: {} ".format(eventId))
 		for trigId in self.triggerList:
 			trigger = indigo.triggers[trigId]
 			if trigger.pluginTypeId == eventId:
 				indigo.trigger.execute(trigger)
 		return
-
-
-	######################################################################################
-	# Indigo Menu Action Methods
-	######################################################################################
-
-	def checkForUpdates(self):
-		self.mylogger.log(1, u"Manually checking for updates")
-		self.updater.checkVersionNow()
 
 
 	######################################################################################
@@ -336,8 +364,7 @@ class Plugin(indigo.PluginBase):
 	def methodDisarmAlarm(self, action, dev):
 		keypname = str(dev.pluginProps['partitionName'])
 		keyp = dev.pluginProps["partitionNumber"]
-		#keyp = keyp[0][0] might return first character as string
-		self.mylogger.log(1, u"Disarming Alarm. (Partition %s '%s')" % (keyp, keypname))
+		self.logger.info(u"Disarming Alarm. (Partition {} '{}')".format(keyp, keypname))
 		tx = "".join(["040", keyp, self.pluginPrefs[u'code'], "0"*(6-len(self.pluginPrefs[u'code']))])
 		self.txCmdList.append((kCmdNormal, tx))
 
@@ -345,14 +372,14 @@ class Plugin(indigo.PluginBase):
 	def methodArmStay(self, action, dev):
 		keypname = str(dev.pluginProps['partitionName'])
 		keyp = dev.pluginProps["partitionNumber"]
-		self.mylogger.log(1, u"Arming Alarm in Stay Mode. (Partition %s '%s')" % (keyp, keypname))
+		self.logger.info(u"Arming Alarm in Stay Mode. (Partition {} '{}')".format(keyp, keypname))
 		self.txCmdList.append((kCmdNormal, '031' + keyp))
 
 
 	def methodArmAway(self, action, dev):
 		keypname = str(dev.pluginProps['partitionName'])
 		keyp = dev.pluginProps["partitionNumber"]
-		self.mylogger.log(1, u"Arming Alarm in Away Mode. (Partition %s '%s')" % (keyp, keypname))
+		self.logger.info(u"Arming Alarm in Away Mode. (Partition {} '{}')".format(keyp, keypname))
 		self.txCmdList.append((kCmdNormal, '030' + keyp))
 
 
@@ -362,26 +389,26 @@ class Plugin(indigo.PluginBase):
 		keyp = dev.pluginProps["partitionNumber"]
 		keypstate = str(dev.states['state'])
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
 		if keypstate == kAlarmStateArmed:
-			self.mylogger.log(1, u"The Selected Partition is Already Armed.")
+			self.logger.warning(u"The Selected Partition is Already Armed.")
 			return
-		if keyp !="1": #this sets all zones to nobypass if they are in partition 2-8, since those partitions do not report zone bypass status
+		if keyp != "1": #this sets all zones to nobypass if they are in partition 2-8, since those partitions do not report zone bypass status
 			tx = "".join(["071", keyp, "*100#"])
-			self.mylogger.log(3, u"We have partition 2-8 and will cancel all bypass")
+			self.logger.debug(u"We have partition 2-8 and will cancel all bypass")
 			self.txCmdList.append((kCmdNormal, tx))
 			self.sleep(3) #add delay if keybus buffer overruns
 		for zoneNum in self.zoneList.keys():
 			zone = indigo.devices[self.zoneList[zoneNum]]
 			zonePartition = zone.pluginProps['zonePartition']
 			if zone.states[u'state.open'] is True and zone.states[u'bypass'] == kZoneBypassNo and zonePartition == keyp:
-				self.mylogger.log(1, u"Received Zone Bypass Action for Zone '%s' in Partition %s%s." % (zone.name, keyp, keypname))
+				self.logger.info(u"Received Zone Bypass Action for Zone '{}' in Partition {}{}.".format(zone.name, keyp, keypname))
 				zoneNum = str(zoneNum).zfill(2)
 				tx = "".join(["071", keyp, "*1", zoneNum, "#"])
 				self.txCmdList.append((kCmdNormal, tx))
 				self.sleep(3) #add delay if keybus buffer overruns
-		self.mylogger.log(1, u"Arming Alarm in Forced Stay Mode. (Partition %s%s)" % (keyp, keypname))
+		self.logger.info(u"Arming Alarm in Forced Stay Mode. (Partition {}{})".format(keyp, keypname))
 		self.txCmdList.append((kCmdNormal, '031' + keyp))
 
 
@@ -391,34 +418,34 @@ class Plugin(indigo.PluginBase):
 		keyp = dev.pluginProps["partitionNumber"]
 		keypstate = str(dev.states['state'])
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
 		if keypstate == kAlarmStateArmed:
-			self.mylogger.log(1, u"The Selected Partition is Already Armed.")
+			self.logger.warning(u"The Selected Partition is Already Armed.")
 			return
-		if keyp !="1": #this sets all zones to nobypass if they are in partition 2-8, since those partitions do not report zone bypass status
+		if keyp != "1": #this sets all zones to nobypass if they are in partition 2-8, since those partitions do not report zone bypass status
 			tx = "".join(["071", keyp, "*100#"])
-			self.mylogger.log(3, u"We have partition 2-8 and will cancel all bypass")
+			self.logger.debug(u"We have partition 2-8 and will cancel all bypass")
 			self.txCmdList.append((kCmdNormal, tx))
 			self.sleep(3) #add delay if keybus buffer overruns
 		for zoneNum in self.zoneList.keys():
 			zone = indigo.devices[self.zoneList[zoneNum]]
 			zonePartition = zone.pluginProps['zonePartition']
 			if zone.states[u'state.open'] is True and zone.states[u'bypass'] == kZoneBypassNo and zonePartition == keyp:
-				self.mylogger.log(1, u"Received Zone Bypass Action for Zone '%s' in Partition %s%s." % (zone.name, keyp, keypname))
+				self.logger.info(u"Received Zone Bypass Action for Zone '{}' in Partition {}{}.".format(zone.name, keyp, keypname))
 				zoneNum = str(zoneNum).zfill(2)
 				tx = "".join(["071", keyp, "*1", zoneNum, "#"])
 				self.txCmdList.append((kCmdNormal, tx))
 				self.sleep(2) #add delay if keybus buffer overruns
-		self.mylogger.log(1, u"Arming Alarm in Forced Away Mode. (Partition %s%s)" % (keyp, keypname))
+		self.logger.info(u"Arming Alarm in Forced Away Mode. (Partition {}{})".format(keyp, keypname))
 		self.txCmdList.append((kCmdNormal, '030' + keyp))
 
 
 	def methodArmGlobal(self, action):
 		#this action arms all defined partitions in away mode.
-		self.mylogger.log(1, u"Arming Alarm in Global Mode (All Partitions).")
+		self.logger.info(u"Arming Alarm in Global Mode (All Partitions).")
 		for i in range(1, 9):
-			if i in self.keypadList.keys():
+			if i in list(self.keypadList.keys()):
 				key = str(i)
 				self.txCmdList.append((kCmdNormal, '030' + key))
 				time.sleep(1)
@@ -426,12 +453,12 @@ class Plugin(indigo.PluginBase):
 
 	def methodPanicAlarm(self, action):
 		panicType = action.props[u'panicAlarmType']
-		self.mylogger.log(1, u"Activating Panic Alarm! (%s)" % kPanicTypeList[int(panicType)])
+		self.logger.info(u"Activating Panic Alarm! ({})".format(kPanicTypeList[int(panicType)]))
 		self.txCmdList.append((kCmdNormal, '060' + panicType))
 
 
 	def methodSendKeypress070(self, action):
-		self.mylogger.log(3, u"Received Send Keypress 070 Action")
+		self.logger.debug(u"Received Send Keypress 070 Action")
 		keys = action.props[u'keys']
 		firstChar = True
 		sendBreak = False
@@ -440,7 +467,7 @@ class Plugin(indigo.PluginBase):
 				time.sleep(2)
 				sendBreak = False
 
-			if (firstChar is False):
+			if firstChar is False:
 				self.txCmdList.append((kCmdNormal, '070^'))
 
 			if char != 'L':
@@ -448,46 +475,46 @@ class Plugin(indigo.PluginBase):
 				sendBreak = True
 
 			firstChar = False
-		if (sendBreak is True):
+		if sendBreak is True:
 			self.txCmdList.append((kCmdNormal, '070^'))
 
 
 	def methodSendKeypress071(self, action, dev):
-	 	keypname = str(dev.pluginProps['partitionName'])
-	 	keypname = " '" + keypname + "'"
-	 	keyp = dev.pluginProps["partitionNumber"]
-	 	keys = action.props[u'keys']
+		keypname = str(dev.pluginProps['partitionName'])
+		keypname = " '" + keypname + "'"
+		keyp = dev.pluginProps["partitionNumber"]
+		keys = action.props[u'keys']
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
-	 	self.mylogger.log(1, u"Received Send Keypress Action [%s]. (Partition %s%s)" % (keys, keyp, keypname))
-	 	cleanKeys = re.sub(r'[^a-e0-9LFAP<>=*#]+', '', keys)
+		self.logger.info(u"Received Send Keypress Action [{}]. (Partition {}{})".format(keys, keyp, keypname))
+		cleanKeys = re.sub(r'[^a-e0-9LFAP<>=*#]+', '', keys)
 		if len(keys) != len(cleanKeys) or "*8" in keys:
-			self.mylogger.log(1, u"There are Invalid Keys in your Command.")
+			self.logger.warning(u"There are Invalid Keys in your Command.")
 			return
 		if len(keys) > 6:
-			self.mylogger.log(1, u"The Key Command is too long.")
+			self.logger.warning(u"The Key Command is too long.")
 			return
-	 	tx = "".join(["071", keyp, keys])
-	 	self.txCmdList.append((kCmdNormal, tx))
+		tx = "".join(["071", keyp, keys])
+		self.txCmdList.append((kCmdNormal, tx))
 
 
 	def methodSendKeypressVariable(self, action):
-		keys = indigo.variables ["DSC_Command"]
+		keys = indigo.variables["DSC_Command"]
 		keys = keys.value
-		self.mylogger.log(1, u"Received Send Keypress Action [%s]." % keys)
+		self.logger.info(u"Received Send Keypress Action [{}].".format(keys))
 		cleanKeys = re.sub(r'[^a-e0-9LFAP<>=*#]+', '', keys)
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
 		if len(keys) != len(cleanKeys) or "*8" in keys:
-			self.mylogger.log(1, u"There are Invalid Keys in your DSCcommand Variable.")
+			self.logger.warning(u"There are Invalid Keys in your DSCcommand Variable.")
 			return
 		if len(keys) > 7:
-			self.mylogger.log(1, u"The Key Command is too long.")
+			self.logger.warning(u"The Key Command is too long.")
 			return
 		if keys[0] < "0" or keys[0] > "8":
-			self.mylogger.log(1, u"The First Character in your DSCcommand Needs to be a Valid Partition (1-8).")
+			self.logger.warning(u"The First Character in your DSCcommand Needs to be a Valid Partition (1-8).")
 		else:
 			self.txCmdList.append((kCmdNormal, '071' + keys))
 
@@ -501,12 +528,12 @@ class Plugin(indigo.PluginBase):
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['state'])
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
 		if keypstate == kAlarmStateArmed:
-			self.mylogger.log(1, u"The Selected Zone '%s' is Armed and Cannot be Bypassed." % zone.name)
+			self.logger.warning(u"The Selected Zone '{}' is Armed and Cannot be Bypassed.".format(zone.name))
 			return
-		self.mylogger.log(1, u"Received Zone Bypass Action for Zone '%s' in Partition %s%s." % (zone.name, keyp, keypname))
+		self.logger.info(u"Received Zone Bypass Action for Zone '{}' in Partition {}{}.".format(zone.name, keyp, keypname))
 		key = str(key).zfill(2)
 		tx = "".join(["071", keyp, "*1", key, "#"])
 		self.txCmdList.append((kCmdNormal, tx))
@@ -521,12 +548,12 @@ class Plugin(indigo.PluginBase):
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['state'])
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
 		if keypstate == kAlarmStateArmed:
-			self.mylogger.log(1, u"The Selected Partition %s%s is Armed and Cannot Accept Bypass Cancel." % (keyp, keypname))
+			self.logger.warning(u"The Selected Partition {}{} is Armed and Cannot Accept Bypass Cancel.".format(keyp, keypname))
 			return
-		self.mylogger.log(1, u"Received All Zones Bypass Cancel for Partition %s%s." % (keyp, keypname))
+		self.logger.info(u"Received All Zones Bypass Cancel for Partition {}{}.".format(keyp, keypname))
 		tx = "".join(["071", keyp, "*100#"])
 		self.txCmdList.append((kCmdNormal, tx))
 
@@ -538,12 +565,12 @@ class Plugin(indigo.PluginBase):
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['state'])
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
 		if keypstate == kAlarmStateArmed:
-			self.mylogger.log(1, u"The Selected Partition %s%s is Armed and Cannot Accept Bypass Recall." % (keyp, keypname))
+			self.logger.warning(u"The Selected Partition {}{} is Armed and Cannot Accept Bypass Recall.".format(keyp, keypname))
 			return
-		self.mylogger.log(1, u"Received Zone(s) Bypass Recall for Partition %s%s." % (keyp, keypname))
+		self.logger.info(u"Received Zone(s) Bypass Recall for Partition {}{}.".format(keyp, keypname))
 		tx = "".join(["071", keyp, "*199#"])
 		self.txCmdList.append((kCmdNormal, tx))
 
@@ -555,9 +582,9 @@ class Plugin(indigo.PluginBase):
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['KeypadChime'])
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
-		self.mylogger.log(1, u"Received Keypad Chime Enable for Partition %s%s." % (keyp, keypname))
+		self.logger.info(u"Received Keypad Chime Enable for Partition {}{}.".format(keyp, keypname))
 		if keypstate != kKeypadStateChimeEnabled:
 			tx = "".join(["071", keyp, "*4"])
 			self.txCmdList.append((kCmdNormal, tx))
@@ -571,19 +598,25 @@ class Plugin(indigo.PluginBase):
 		keypname = " '" + keypname + "'"
 		keypstate = str(dev.states['KeypadChime'])
 		if self.useSerial is True:
-			self.mylogger.logError('This Action does not work with IT-100.')
+			self.logger.error(u"This Action does not work with IT-100.")
 			return
-		self.mylogger.log(1, u"Received Keypad Chime Disable for Partition %s%s." % (keyp, keypname))
+		self.logger.info(u"Received Keypad Chime Disable for Partition {}{}.".format(keyp, keypname))
 		if keypstate == kKeypadStateChimeEnabled:
 			tx = "".join(["071", keyp, "*4"])
 			self.txCmdList.append((kCmdNormal, tx))
 			return
 
 
+	def methodSyncTime(self, action):
+		d = datetime.now()
+		self.logger.info(u"Setting alarm panel time and date.")
+		self.txCmdList.append((kCmdNormal, u"010{}".format(d.strftime("%H%M%m%d%y"))))
+
+
     # Queue a command to set DSC Thermostat Setpoints
 	#
 	def methodAdjustThermostat(self, action):
-		self.mylogger.log(3, u"Device %s:" % action)
+		self.logger.debug(u"Device {}:".format(action))
 		self.txCmdList.append((kCmdThermoSet, action))
 
 
@@ -595,13 +628,13 @@ class Plugin(indigo.PluginBase):
 			if self.tempList[sensorNum].id == action.deviceId:
 				break
 
-		self.mylogger.log(3, u"SensorNum = %s" % sensorNum)
+		self.logger.debug(u"SensorNum = {}".format(sensorNum))
 
 		#send 095 for thermostat in question, wait for 563 response
-		#self.mylogger.log(3, u'095' + str(sensorNum))
+		#self.logger.debug(u'095' + str(sensorNum))
 		rx = self.sendPacket(u'095' + str(sensorNum), waitFor='563')
-		if len(rx) == 0:
-			self.mylogger.logError('Error getting current thermostat setpoints, aborting adjustment.')
+		if not rx:
+			self.logger.error(u"Error getting current thermostat setpoints, aborting adjustment.")
 			return
 
 		if (action.props[u'thermoAdjustmentType'] == u'+') or (action.props[u'thermoAdjustmentType'] == u'-'):
@@ -613,17 +646,17 @@ class Plugin(indigo.PluginBase):
 		#      096Th-000 to dec heat
 		#      096Th=### to set setpoint
 		# wait for 563 response
-		#self.mylogger.log(3, u'096%u%c%c%03u' % (sensorNum, action.props[u'thermoAdjustWhich'], action.props[u'thermoAdjustmentType'],sp) )
+		#self.logger.debug(u'096%u%c%c%03u' % (sensorNum, action.props[u'thermoAdjustWhich'], action.props[u'thermoAdjustmentType'],sp) )
 		rx = self.sendPacket(u'096%u%c%c%03u' % (sensorNum, action.props[u'thermoAdjustWhich'], action.props[u'thermoAdjustmentType'], sp), waitFor='563')
-		if len(rx) == 0:
-			self.mylogger.logError('Error changing thermostat setpoints, aborting adjustment.')
+		if not rx:
+			self.logger.error(u"Error changing thermostat setpoints, aborting adjustment.")
 			return
 
 		# send 097T
 		#send 097 for thermostat in question to save setting, wait for 563 response
 		rx = self.sendPacket(u'097' + str(sensorNum), waitFor='563')
-		if len(rx) == 0:
-			self.mylogger.logError('Error saving thermostat setpoints, aborting adjustment.')
+		if not rx:
+			self.logger.error(u"Error saving thermostat setpoints, aborting adjustment.")
 			return
 
 
@@ -632,7 +665,7 @@ class Plugin(indigo.PluginBase):
 	def methodResetZoneGroupTimer(self, action):
 		if action.deviceId in indigo.devices:
 			zoneGrp = indigo.devices[action.deviceId]
-			self.mylogger.log(3, u"Manual timer reset for alarm zone group \"%s\"" % zoneGrp.name)
+			self.logger.debug(u"Manual timer reset for alarm zone group \"{}\"".format(zoneGrp.name))
 			zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedTimer", value=0)
 			zoneGrp.updateStateOnServer(key=u"EntireGroupLastChangedTimer", value=0)
 			zoneGrp.updateStateOnServer(key=u"AnyMemberLastChangedShort", value="0m")
@@ -647,41 +680,41 @@ class Plugin(indigo.PluginBase):
 	# Returns False on failure, True on success
 	#
 	def validatePrefsConfigUi(self, valuesDict):
-		self.mylogger.log(3, u"validating Prefs called")
+		self.logger.debug(u"validating Prefs called")
 		errorMsgDict = indigo.Dict()
 		wasError = False
 
 		if valuesDict[u'configInterface'] == u'serial':
-			if len(valuesDict[u'serialPort']) == 0:
+			if not (valuesDict[u'serialPort']):
 				errorMsgDict[u'serialPort'] = u"Select a valid serial port."
 				wasError = True
 		else:
-			if len(valuesDict[u'TwoDS_Address']) == 0:
+			if not (valuesDict[u'TwoDS_Address']):
 				errorMsgDict[u'TwoDS_Address'] = u"Enter a valid IP address or host name."
 				wasError = True
-			if len(valuesDict[u'TwoDS_Password']) == 0:
-				errorMsgDict[u'TwoDS_Password'] = u"Enter the password for the 2DS."
+			if not (valuesDict[u'TwoDS_Password']):
+				errorMsgDict[u'TwoDS_Password'] = u"Enter the password for the Envisalink."
 				wasError = True
 
 		if len(valuesDict[u'code']) > 6:
 			errorMsgDict[u'code'] = u"The code must be 6 digits or less."
 			wasError = True
 
-		if len(valuesDict[u'code']) == 0:
+		if not (valuesDict[u'code']):
 			errorMsgDict[u'code'] = u"You must enter the alarm's arm/disarm code."
 			wasError = True
 
-		if len(valuesDict[u'emailUrgent']) > 0:
+		if (valuesDict[u'emailUrgent']):
 			if not re.match(r"[^@]+@[^@]+\.[^@]+", valuesDict[u'emailUrgent']):
 				errorMsgDict[u'emailUrgent'] = u"Please enter a valid email address."
 				wasError = True
 
-		if len(valuesDict[u'updaterEmail']) > 0:
-			if not re.match(r"[^@]+@[^@]+\.[^@]+", valuesDict[u'updaterEmail']):
-				errorMsgDict[u'updaterEmail'] = u"Please enter a valid email address."
+		if (valuesDict[u'emailNotice']):
+			if not re.match(r"[^@]+@[^@]+\.[^@]+", valuesDict[u'emailNotice']):
+				errorMsgDict[u'emailNotice'] = u"Please enter a valid email address."
 				wasError = True
 
-		if len(valuesDict[u'EmailDisarm']) > 0:
+		if (valuesDict[u'EmailDisarm']):
 			if not re.match(r"[^@]+@[^@]+\.[^@]+", valuesDict[u'EmailDisarm']):
 				errorMsgDict[u'EmailDisarm'] = u"Please enter a valid email address."
 				wasError = True
@@ -720,7 +753,7 @@ class Plugin(indigo.PluginBase):
 		return (True, valuesDict)
 
 	def validateActionConfigUi(self, valuesDict, typeId, actionId):
-		self.mylogger.log(3, u"validating Action Config called")
+		self.logger.debug(u"validating Action Config called")
 		if typeId == u'actionSendKeypress':
 			keys = valuesDict[u'keys']
 			cleanKeys = re.sub(r'[^a-e0-9LFAP<>=*#]+', '', keys)
@@ -730,10 +763,9 @@ class Plugin(indigo.PluginBase):
 				return (False, valuesDict, errorMsgDict)
 		return (True, valuesDict)
 
-
 	def validateEventConfigUi(self, valuesDict, typeId, eventId):
-		self.mylogger.log(3, u"validating Event Config called")
-		#self.mylogger.log(3, u"Type: %s, Id: %s, Dict: %s" % (typeId, eventId, valuesDict))
+		self.logger.debug(u"validating Event Config called")
+		#self.logger.debug(u"Type: {}, Id: {}, Dict: {}".format(typeId, eventId, valuesDict))
 		if typeId == u'userArmed' or typeId == u'userDisarmed':
 			code = valuesDict[u'userCode']
 			if len(code) != 2:
@@ -749,34 +781,32 @@ class Plugin(indigo.PluginBase):
 		return (True, valuesDict)
 
 	def validateDeviceConfigUi(self, valuesDict, typeId, devId):
-		self.mylogger.log(3, u"validating Device Config called")
-		#self.mylogger.log(3, u"Type: %s, Id: %s, Dict: %s" % (typeId, devId, valuesDict))
+		self.logger.debug(u"validating Device Config called")
+		#self.logger.debug(u"Type: {}, Id: {}, Dict: {}".format(typeId, devId, valuesDict))
 		if typeId == u'alarmZone':
 			zoneNum = int(valuesDict[u'zoneNumber'])
-			if zoneNum in self.zoneList.keys() and devId != indigo.devices[self.zoneList[zoneNum]].id:
-				#self.mylogger.log(3, u"ZONEID: %s" % self.DSC.zoneList[zone].id)
+			if zoneNum in list(self.zoneList.keys()) and devId != indigo.devices[self.zoneList[zoneNum]].id:
+				#self.logger.debug(u"ZONEID: {}".format(self.DSC.zoneList[zone].id))
 				errorMsgDict = indigo.Dict()
 				errorMsgDict[u'zoneNumber'] = u"This zone has already been assigned to a different device."
 				return (False, valuesDict, errorMsgDict)
 		if typeId == u'alarmKeypad':
 			partitionNum = int(valuesDict[u'partitionNumber'])
-			if partitionNum in self.keypadList.keys() and devId != indigo.devices[self.keypadList[partitionNum]].id:
+			if partitionNum in list(self.keypadList.keys()) and devId != indigo.devices[self.keypadList[partitionNum]].id:
 				errorMsgDict = indigo.Dict()
 				errorMsgDict[u'partitionNumber'] = u"This partition has already been assigned to a different device."
 				return (False, valuesDict, errorMsgDict)
 		return (True, valuesDict)
 
-
 	def getZoneList(self, filter="", valuesDict=None, typeId="", targetId=0):
 		myArray = []
 		for i in range(1, 65):
 			zoneName = str(i)
-			if i in self.zoneList.keys():
+			if i in list(self.zoneList.keys()):
 				zoneDev = indigo.devices[self.zoneList[i]]
 				zoneName = ''.join([str(i), ' - ', zoneDev.name])
 			myArray.append((str(i), zoneName))
 		return myArray
-
 
 	def getZoneDevices(self, filter="", valuesDict=None, typeId="", targetId=0):
 		myArray = []
@@ -793,15 +823,12 @@ class Plugin(indigo.PluginBase):
 		myArray = []
 		for i in range(1, 9):
 			keypadName = str(i)
-			if i in self.keypadList.keys():
+			if i in list(self.keypadList.keys()):
 				keypDev = indigo.devices[self.keypadList[i]]
 				keypadName = str(keypDev.pluginProps['partitionName'])
 				keypadName = ''.join([str(i), ' - ', keypadName])
-				#keypadName = ''.join([str(i), ' - ', keypDev.name])
 			myArray.append((str(i), keypadName))
 		return myArray
-
-
 
 
 	######################################################################################
@@ -811,13 +838,23 @@ class Plugin(indigo.PluginBase):
 	# Reads the plugins config file into our own variables
 	#
 	def getConfiguration(self, valuesDict):
-
-		# Tell our logging class to reread the config for level changes
-		self.mylogger.readConfig()
-
-		self.mylogger.log(3, u"getConfiguration start")
-
+		
 		try:
+
+			# Tell our logging class to reread the config for logging level changes
+			self.logLevel = int(self.pluginPrefs[u"logLevel"])  #new routine
+			self.indigo_log_handler.setLevel(self.logLevel)  #new routine
+			self.logger.debug(u"getConfiguration start. Log Levels are set to \"{}\".".format(kLogLevelList[int(self.logLevel/10)]))
+			#self.logger.debug(u"getConfiguration start. Log Levels are set to \"{}\".".format(valuesDict['logLevel']))
+		
+			# Setting log level of private plugin log handler to only log threaddebug events if this is the setting in logging preferences.
+			# Normally, the private log handler always logs threaddebug, which can fill up the log quite a lot.
+			if valuesDict['logLevel'] == "5":
+				self.plugin_file_handler.setLevel(logging.THREADDEBUG)
+				self.logger.debug(u"Private Log Handler set to THREADDEBUG")
+			else:
+				self.plugin_file_handler.setLevel(logging.DEBUG)
+				self.logger.debug(u"Private Log Handler set to DEBUG")
 
 			# Get setting of Create Variables checkbox
 			if valuesDict[u'createVariables'] is True:
@@ -835,32 +872,33 @@ class Plugin(indigo.PluginBase):
 				self.useSerial = True
 
 			self.configKeepTimeSynced = valuesDict.get(u'syncTime', True)
+			self.configUseCustomIcons = valuesDict.get(u'customStateIcons', True)
 
 			self.configSpeakVariable = None
 			if u'speakToVariableEnabled' in valuesDict:
 				if valuesDict[u'speakToVariableEnabled'] is True:
 					self.configSpeakVariable = int(valuesDict[u'speakToVariableId'])
 					if self.configSpeakVariable not in indigo.variables:
-						self.mylogger.logError('Speak variable not found in variable list')
+						self.logger.error(u"Speak variable not found in variable list")
 						self.configSpeakVariable = None
 
 			self.configEmailUrgent = valuesDict.get(u'emailUrgent', '')
-			self.configEmailNotice = valuesDict.get(u'updaterEmail', '')
+			self.configEmailNotice = valuesDict.get(u'emailNotice', '')
 			self.configEmailDisarm = valuesDict.get(u'EmailDisarm', '')
 			self.configEmailUrgentSubject = valuesDict.get(u'emailUrgentSubject', 'Alarm Tripped')
-			self.configEmailNoticeSubject = valuesDict.get(u'updaterEmailSubject', 'Alarm Trouble')
+			self.configEmailNoticeSubject = valuesDict.get(u'emailNoticeSubject', 'Alarm Trouble')
 			self.configEmailDisarmSubject = valuesDict.get(u'DisarmEmailSubject', 'Who Disarmed')
 
 			self.userCodeList = valuesDict.get(u'userCode', '').split(",")
 			self.userLabelList = valuesDict.get(u'userLabel', '').split(",")
-			self.userLabelDict = dict(zip(self.userCodeList, self.userLabelList))
+			self.userLabelDict = dict(list(zip(self.userCodeList, self.userLabelList)))
 
-			self.mylogger.log(3, u"Configuration read successfully")
+			self.logger.debug(u"Configuration read successfully")
 
 			return True
 
 		except:
-			self.mylogger.log(2, u"Error reading plugin configuration. (happens on very first launch)")
+			self.logger.debug(u"Error reading plugin configuration. (happens on very first launch)")
 
 			return False
 
@@ -887,24 +925,24 @@ class Plugin(indigo.PluginBase):
 		self.closePort()
 		if self.useSerial is False:
 			adr = self.pluginPrefs[u'TwoDS_Address'] + ':4025'
-			self.mylogger.log(1, u"Initializing communication at address: %s" % adr)
+			self.logger.info(u"Initializing communication at address: {}".format(adr))
 			try:
 				self.port = serial.serial_for_url('socket://' + adr, baudrate=115200)
-			except Exception, err:
-				self.mylogger.logError('Error opening socket: %s' % (str(err)))
+			except Exception as err:
+				self.logger.error(u"Error opening socket: {}".format(str(err)))
 				return False
 		else:
-			self.mylogger.log(1, u"Initializing communication on port %s" % self.pluginPrefs[u'serialPort'])
+			self.logger.info(u"Initializing communication on port {}".format(self.pluginPrefs[u'serialPort']))
 			try:
 				self.port = serial.Serial(self.pluginPrefs[u'serialPort'], 9600, writeTimeout=1)
-			except Exception, err:
-				self.mylogger.logError('Error opening serial port: %s' % (str(err)))
+			except Exception as err:
+				self.logger.error(u"Error opening serial port: {}".format(str(err)))
 				return False
 
 		if self.port.isOpen() is True:
 			self.port.flushInput()
 			self.port.timeout = 1
-			self.mylogger.log(1, u"Communication established")
+			self.logger.info(u"Communication established")
 			return True
 
 		return False
@@ -918,13 +956,11 @@ class Plugin(indigo.PluginBase):
 		data = ""
 		try:
 			data = self.port.readline()
-		except Exception, err:
-			self.mylogger.logError('Connection RX Error: %s' % (str(err)))
-			# Return with '-' signaling calling subs to abort so we can re-init.
-			data = '-'
-			#exit()
+		except Exception as err:
+			self.logger.error(u"Connection RX Error: {}".format(str(err)))
+			data = '-'.encode('utf-8')   #encode in bytes to be compatible with how data are received from serial port
 		except:
-			self.mylogger.logError('Connection RX Problem, plugin quitting')
+			self.logger.error(u"Connection RX Problem, plugin quitting")
 			exit()
 		return data
 
@@ -934,15 +970,19 @@ class Plugin(indigo.PluginBase):
 
 
 	def sendPacketOnly(self, data):
-		pkt = "%s%02X\r\n" % (data, self.calcChecksum(data))
-		self.mylogger.log(4, u"TX: %s" % pkt)
+		pkt = "{}{:02X}\r\n".format(data, self.calcChecksum(data))
+		self.logger.threaddebug(u"TX: {}".format(pkt))
 		try:
-			self.writePort(pkt.encode())
-		except Exception, err:
-			self.mylogger.logError('Connection TX Error: %s' % (str(err)))
+			#self.writePort(pkt.encode()) # make PY3 compatible. All data is send as two-digit hex ASCII codes. () is ASCII in PY2 but UTF-8 in PY3.
+			if self.PY3:
+				self.writePort(pkt.encode("utf-8"))
+			else:
+				self.writePort(pkt.encode())
+		except Exception as err:
+			self.logger.error(u"Connection TX Error: {}".format(str(err)))
 			exit()
 		except:
-			self.mylogger.logError('Connection TX Problem, plugin quitting')
+			self.logger.error(u"Connection TX Problem, plugin quitting")
 			exit()
 
 
@@ -964,28 +1004,31 @@ class Plugin(indigo.PluginBase):
 					return '-'
 
 				if rxCmd == '502':
-					self.mylogger.logError('Received system error after sending command, aborting.')
+					self.logger.error(u"Received system error/warning after sending command, aborting.")
 					return ''
 
 				# If rxCmd is not 0 length then we received a response
-				if len(rxCmd) > 0:
+				if rxCmd:
 					if waitFor == '500':
 						if (rxCmd == '500') and (rxData == txCmd):
 							return rxData
-					elif (rxCmd == waitFor):
+					elif rxCmd == waitFor:
 						return rxData
 			if txCmd != '000':
-				self.mylogger.logError('Timed out after waiting for response to command %s for %u seconds, retrying.' % (tx, rxTimeout))
-		self.mylogger.logError('Resent command %s %u times with no success, aborting.' % (tx, retries))
+				self.logger.error(u"Timed out after waiting for response to command {} for {} seconds, retrying.".format(tx, rxTimeout))
+		self.logger.error(u"Resent command {} {} times with no success, aborting.".format(tx, retries))
 		return ''
 
 
 	def readPacket(self):
 
-		data = self.readPort()
-		if len(data) == 0:
+		data = self.readPort() # make PY3 compatible
+		if self.PY3:
+			data = data.decode("utf-8")
+		if not data:
 			return ('', '')
 		elif data == '-':
+			self.logger.debug("socket has closed")
 			# socket has closed, return with signal to re-initialize
 			return ('-', '')
 
@@ -995,28 +1038,29 @@ class Plugin(indigo.PluginBase):
 		if not m:
 			return ('', '')
 
-		# Put this try in to try to catch exceptions when non-ascii characters
-		# were received, not sure why they are being received.
+		# This try block catch exceptions when non-ascii characters were received. 
+		# Not sure why they are being received.
 		try:
-			self.mylogger.log(4, u"RX: %s" % data)
+			self.logger.threaddebug(u"RX: {}".format(data))
 			(cmd, dat, sum) = (m.group(1), m.group(2), int(m.group(3), 16))
 		except:
-			self.mylogger.logError(u'IT-100/Envisalink Error: Received a response with invalid characters')
+			self.logger.error(u"IT-100/Envisalink Error: Received a response with invalid characters")
 			return ('', '')
 
 		if sum != self.calcChecksum("".join([cmd, dat])):
-			self.mylogger.logError("Checksum did not match on a received packet.")
+			self.logger.error(u"Checksum did not match on a received packet.")
 			return ('', '')
 
-		# Parse responses based on cmd value
-		#
-		
+		##################################################################################
+		# Parse responses based on cmd value received from panel
+		##################################################################################
+
 		if cmd == '500':
-			self.mylogger.log(3, u"ACK for cmd %s." % dat)
+			self.logger.threaddebug(u"ACK for cmd {}.".format(dat))
 			self.cmdAck = dat
 
 		elif cmd == '501':
-			self.mylogger.logError(u'IT-100/Envisalink Error: Received a command with a bad checksum')
+			self.logger.error(u"IT-100/Envisalink Error: Received a command with a bad checksum")
 
 		elif cmd == '502':
 			errText = u'Unknown'
@@ -1067,11 +1111,14 @@ class Plugin(indigo.PluginBase):
 			elif dat == '027':
 				errText = u'API Invalid Characters in Command'
 
-			self.mylogger.logError(u"IT-100/Envisalink Error (%s): %s" % (dat, errText))
+			if dat in {'023', '024'}:
+				self.logger.warning(u"IT-100/Envisalink Warning ({}): {}".format(dat, errText))
+			else:
+				self.logger.error(u"IT-100/Envisalink Error ({}): {}".format(dat, errText))
 
 		elif cmd == '505':
 			if dat == '3':
-				self.mylogger.log(3, u'Received login request')
+				self.logger.debug(u"Received login request")
 
 		elif cmd == '510':
 			# Keypad LED State Updates for Partition 1 only
@@ -1109,28 +1156,32 @@ class Plugin(indigo.PluginBase):
 			pass
 
 		elif cmd == '550':
-
+			# command is send by DSC panel every 4 min
 			m = re.search(r'^(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$', dat)
 			if m:
-				tHour = int(m.group(1))
-				tMin = int(m.group(2))
-				dMonth = int(m.group(3)) - 1
-				dMonthDay = int(m.group(4))
-				dYear = int(m.group(5))
+				tHour = m.group(1).zfill(2)   #padding str objects to two digits
+				tMin = m.group(2).zfill(2)
+				dMonth = m.group(3).zfill(2)
+				dMonthDay = m.group(4).zfill(2)
+				dYear = m.group(5)
+				self.logger.debug(u"Received alarm panel time and date {0}:{1} {2}-{3}-{4}".format(tHour, tMin, dMonth, dMonthDay, dYear))
 
-				# Check if we should sync time
 				if self.configKeepTimeSynced is True:
+					# Is it 3 am and the time has not recently been synced?
 					d = datetime.now()
-					# Is the hour different or minute off by more than one minute?
-					if (d.hour != tHour) or (abs(d.minute - tMin) > 1):
-						self.mylogger.log(1, u"Setting alarm panel time and date.")
-						self.txCmdList.append((kCmdNormal, u"010%s" % d.strftime("%H%M%m%d%y")))
+					if self.timesyncflag is True and (d.hour == 3) and (d.minute in range(0, 6)):
+						self.logger.debug(u"Syncing alarm panel time and date.")
+						self.txCmdList.append((kCmdNormal, u"010{}".format(d.strftime("%H%M%m%d%y"))))
+						self.timesyncflag = False
 					else:
-						self.mylogger.log(3, u"Alarm panel time is within 1 minute of actual time, no update necessary.")
+						self.timesyncflag = True
+						self.logger.debug(u"No time sync necessary.")
 
-				# If this is a 2DS/Envisalink interface then lets insert the time (updated every 4 minutes)
+				# If this is a 2DS/Envisalink interface then lets insert the time in the virtual keypad 
+				# (time is updated only every 4 minutes, so not very useful to use)
 				if self.useSerial is False:
 					tAmPm = u'a'
+					tHour = int(tHour)
 					if tHour >= 12:
 						tAmPm = u'p'
 
@@ -1138,16 +1189,17 @@ class Plugin(indigo.PluginBase):
 						tHour -= 12
 					elif tHour == 0:
 						tHour = 12
+					str(tHour).zfill(2)
 					self.updateKeypad(0, u'LCDLine1', u'  Date     Time ')
-					self.updateKeypad(0, u'LCDLine2', u"%s %02u/%02u %2u:%02u%s" % (kMonthList[dMonth], dMonthDay, dYear, tHour, tMin, tAmPm))
+					self.updateKeypad(0, u'LCDLine2', u"{0} {1}/{2} {3}:{4}{5}".format(kMonthList[int(dMonth)-1], dMonthDay, dYear, tHour, tMin, tAmPm))
+					self.logger.debug(u"{0} {1}/{2} {3}:{4}{5}".format(kMonthList[int(dMonth)-1], dMonthDay, dYear, tHour, tMin, tAmPm))
 
 		elif cmd == '560':
-			self.mylogger.log(1, u"Telephone Ring Tone Has Been Detected.")
+			self.logger.info(u"Telephone Ring Tone Has Been Detected.")
 			for trig in self.triggerList:
 				trigger = indigo.triggers[trig]
 				if trigger.pluginTypeId == u'eventNoticeTelephone_Ring':
 					indigo.trigger.execute(trigger.id)
-
 
 		elif cmd == '561' or cmd == '562':
 			m = re.search(r'^(.)(...)$', dat)
@@ -1171,13 +1223,17 @@ class Plugin(indigo.PluginBase):
 			if m:
 				(partition, zone) = (int(m.group(1)), int(m.group(2)))
 				self.updateZoneState(zone, kZoneStateTripped)
-				if (len(self.trippedZoneList) == 0):
+				if zone in list(self.zoneList.keys()) and self.configUseCustomIcons is True:
+					dev = indigo.devices[self.zoneList[zone]]
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorTripped)
+
+				if not (self.trippedZoneList):
 					if "DSC_Alarm_Memory" in indigo.variables:
-						indigo.variable.updateValue("DSC_Alarm_Memory", value ="")
+						indigo.variable.updateValue("DSC_Alarm_Memory", value="")
 				if zone not in self.trippedZoneList:
 					self.trippedZoneList.append(zone)
 					self.sendZoneTrippedEmail()
-					indigoVar =""
+					indigoVar = ""
 					for zoneNum in self.trippedZoneList:
 						zone = indigo.devices[self.zoneList[zoneNum]]
 						indigoVar += (zone.name + "; ")
@@ -1192,58 +1248,93 @@ class Plugin(indigo.PluginBase):
 				dev = indigo.devices[self.keypadList[partition]]
 				zonedev = indigo.devices[self.zoneList[zone]]
 				keyp = str(dev.pluginProps['partitionName'])
-				self.mylogger.log(1, u"Zone '%s' Restored. (Partition %d '%s')" % (zonedev.name, partition, keyp))
+				self.logger.info(u"Zone '{}' Restored. (Partition {} '{}')".format(zonedev.name, partition, keyp))
 
 		elif cmd == '603':
 			m = re.search(r'^(.)(...)$', dat)
 			if m:
 				(partition, zone) = (int(m.group(1)), int(m.group(2)))
-				self.mylogger.log(3, u"Zone Number %d Has a Tamper Condition." % zone)
+				self.logger.debug(u"Zone Number {} Has a Tamper Condition.".format(zone))
 
 		elif cmd == '604':
 			m = re.search(r'^(.)(...)$', dat)
 			if m:
 				(partition, zone) = (int(m.group(1)), int(m.group(2)))
-				self.mylogger.log(3, u"Zone Number %d Tamper Condition has been Restored." % zone)
+				self.logger.debug(u"Zone Number {} Tamper Condition has been Restored.".format(zone))
 
 		elif cmd == '605':
 			zone = int(dat)
-			self.mylogger.log(3, u"Zone Number %d Has a Fault Condition." % zone)
+			self.logger.debug(u"Zone Number {} Has a Fault Condition.".format(zone))
 
 		elif cmd == '606':
 			zone = int(dat)
-			self.mylogger.log(3, u"Zone Number %d Fault Condition has been Restored." % zone)
+			self.logger.debug(u"Zone Number {} Fault Condition has been Restored.".format(zone))
 
 		elif cmd == '609':
 			zone = int(dat)
-			self.mylogger.log(3, u"Zone Number %d Open." % zone)
+			self.logger.debug(u"Zone Number {} Open.".format(zone))
 			self.updateZoneState(zone, kZoneStateOpen)
 			if self.repeatAlarmTripped is True:
 				if zone in self.closeTheseZonesList:
 					self.closeTheseZonesList.remove(zone)
+			# Custom state image icons are shown in Indigo Touch and Indigo client UI if selected in Config Prefs.
+			# Not all icons are working yet in Indigo. Feel free to change icons to your liking.
+			if zone in list(self.zoneList.keys()) and self.configUseCustomIcons is True:
+				self.logger.debug(u"We are using custom state icons")
+				dev = indigo.devices[self.zoneList[zone]]
+				zoneType = dev.pluginProps['zoneType']
+				if zoneType == "zoneTypeMotion":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.MotionSensorTripped)
+				elif zoneType == "zoneTypeDoor":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.DoorSensorOpened)
+				elif zoneType == "zoneTypeWindow":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.WindowSensorOpened)
+				elif zoneType == "zoneTypeFire":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.HvacHeating)
+				elif zoneType == "zoneTypeWater":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SprinklerOn)
+				elif zoneType == "zoneTypeGas":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.HvacFanOn)
+				elif zoneType == "zoneTypeGlass":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)
+				elif zoneType == "zoneTypeShock":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)
+				elif zoneType == "zoneTypeCO":
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)
+				else:
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)
 
 		elif cmd == '610':
 			zone = int(dat)
-			self.mylogger.log(3, u"Zone Number %d Closed." % zone)
+			self.logger.debug(u"Zone Number {} Closed.".format(zone))
 			# Update the zone to closed ONLY if the alarm is not tripped
 			# We want the tripped states to be preserved so someone looking
 			# at their control page will see all the zones that have been
 			# opened since the break in.
 			if self.repeatAlarmTripped is False:
 				self.updateZoneState(zone, kZoneStateClosed)
+				if zone in list(self.zoneList.keys()) and self.configUseCustomIcons is True:
+					dev = indigo.devices[self.zoneList[zone]]
+					zoneType = dev.pluginProps['zoneType']
+					if zoneType == "zoneTypeMotion":
+						dev.updateStateImageOnServer(indigo.kStateImageSel.MotionSensor)
+					else:
+						dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOff)
 			else:
 				self.closeTheseZonesList.append(zone)
 
 		elif cmd == '616':
-			#cmd is sent after a zone is bypassed or bypass is cancelled.
-			#This dump can be forced with keypress command [1*1#] if partition is not armed. If partition is armed it will switch armed state from stay to away and vice versa.
-			#Routine that identifies bypassed zones and updates zone status kZoneBypassNo or kZoneBypassYes via newState (unfortunately for partition 1 only)
+			# cmd is sent after a zone is bypassed or bypass is cancelled.
+			# This dump can be forced with keypress command [1*1#] if partition is not armed. 
+			# If partition is armed it will switch armed state from stay to away and vice versa.
+			# Routine that identifies bypassed zones and updates zone status kZoneBypassNo 
+			# or kZoneBypassYes via newState (unfortunately for partition 1 only).
 			BypassHexDump = str(dat)       #this is the 16-digit hex string for bypassed zones. Partition 1 only!
-			self.mylogger.log(3, u"Bypass Hex Dump (%s)" % BypassHexDump)
+			self.logger.debug(u"Bypass Hex Dump ({})".format(BypassHexDump))
 			BBDump = format(int(BypassHexDump, 16), '0>64b')
-			BypassBinaryDump = "".join(["".join([m[i:i+1] for i in range(8-1,-1,-1)]) for m in [BBDump[i:i+8] for i in range(0,len(BBDump),8)]])
-			#reordered in 8 bit words to get zones in 1-64 order
-			self.mylogger.log(2, u"Bypass Binary Dump (%s)" % BypassBinaryDump)
+			BypassBinaryDump = "".join(["".join([m[i:i+1] for i in range(8-1, -1, -1)]) for m in [BBDump[i:i+8] for i in range(0, len(BBDump), 8)]])
+			# reordered in 8 bit words to get zones in 1-64 order
+			self.logger.debug(u"Bypass Binary Dump ({})".format(BypassBinaryDump))
 			for i in range(64):
 				if BypassBinaryDump[i-1] == '1':
 					self.updateZoneBypass(i, kZoneBypassYes)
@@ -1251,61 +1342,63 @@ class Plugin(indigo.PluginBase):
 					self.updateZoneBypass(i, kZoneBypassNo)
 
 		elif cmd == '620':
-			self.mylogger.log(1, u"Duress Alarm Detected")
+			self.logger.warning(u"Duress Alarm Detected")
 			self.sendDuressEmail(u"Duress Alarm Detected")
 			# This updates all keypads (partitions)
 			self.updateKeypad(0, u'PanicState', kPanicStateDuress)
 
 		elif cmd == '621':
-			self.mylogger.log(1, u"Fire Key Alarm Detected")
+			self.logger.warning(u"Fire Key Alarm Detected")
 			self.sendPanicEmail(u"Fire Key Alarm Detected")
 			# This updates all keypads (partitions)
 			self.updateKeypad(0, u'PanicState', kPanicStateFire)
 
 		elif cmd == '623':
-			self.mylogger.log(1, u"Auxiliary/Medical Key Alarm Detected")
+			self.logger.warning(u"Auxiliary/Medical Key Alarm Detected")
 			self.sendPanicEmail(u"Ambulance/Medical Key Alarm Detected")
 			# This updates all keypads (partitions)
 			self.updateKeypad(0, u'PanicState', kPanicStateAmbulance)
 
 		elif cmd == '625':
-			self.mylogger.log(1, u"Panic Key Alarm Detected")
+			self.logger.warning(u"Panic Key Alarm Detected")
 			self.sendPanicEmail(u"Police/Panic Key Alarm Detected")
 			# This updates all keypads (partitions)
 			self.updateKeypad(0, u'PanicState', kPanicStatePanic)
 
 		elif cmd == '631':
-			self.mylogger.log(1, u"Auxiliary/Smoke Input Alarm Detected")
+			self.logger.warning(u"Auxiliary/Smoke Input Alarm Detected")
 
 		elif cmd == '632':
-			self.mylogger.log(1, u"Auxiliary/Smoke Input Alarm Restored")
+			self.logger.info(u"Auxiliary/Smoke Input Alarm Restored")
 
 		elif cmd == '650':
-			self.mylogger.log(3, u"Partition %d Ready" % int(dat))
+			# This reports ready state only for keypads i.e. partitions that are ready.
+			self.logger.debug(u"Partition {} Ready".format(int(dat)))
 			partition = int(dat)
 			self.updateKeypad(partition, u'ReadyState', kReadyStateTrue)
 			self.updateKeypad(partition, u'LEDReady', 'on')
-			# This reports ready state only for keypads i.e. partitions that are ready.
 
 		elif cmd == '651':
-			self.mylogger.log(3, u"Partition %d Not Ready" % int(dat))
+			self.logger.debug(u"Partition {} Not Ready".format(int(dat)))
 			partition = int(dat)
 			self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 			self.updateKeypad(partition, u'LEDReady', 'off')
-
 
 		elif cmd == '652':
 			if len(dat) == 1:
 				partition = int(dat)
 				dev = indigo.devices[self.keypadList[partition]]
 				keyp = str(dev.pluginProps['partitionName'])
-				self.mylogger.log(3, u"Alarm Panel Armed. (Partition %d '%s')" % (partition, keyp))
+				self.logger.debug(u"Alarm Panel Armed. (Partition {} '{}')".format(partition, keyp))
 				self.updateKeypad(partition, u'state', kAlarmStateArmed)
 				self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 				self.updateKeypad(partition, u'LEDReady', 'off')
-				self.updateKeypad(partition, u'LEDArmed', 'on')	  # these update LEDs for partitions 1-8
+				self.updateKeypad(partition, u'LEDArmed', 'on')	  # updates LEDs for partitions 1-8
 				self.speak('speakTextArmed')
 				self.trippedZoneList = []
+				if self.configUseCustomIcons is True:
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorTripped)  # red circle
+					#dev.updateStateImageOnServer(indigo.kStateImageSel.Locked)  # green locked padlock
 
 			elif len(dat) == 2:
 				m = re.search(r'^(.)(.)$', dat)
@@ -1313,14 +1406,14 @@ class Plugin(indigo.PluginBase):
 					(partition, mode) = (int(m.group(1)), int(m.group(2)))
 					dev = indigo.devices[self.keypadList[partition]]
 					keyp = str(dev.pluginProps['partitionName'])
-					self.mylogger.log(1, u"Alarm Panel Armed in %s Mode. (Partition %d '%s')" % (kArmedModeList[mode], partition, keyp))
+					self.logger.info(u"Alarm Panel Armed in {} Mode. (Partition {} '{}')".format(kArmedModeList[mode], partition, keyp))
 					if (mode == 0) or (mode == 2):
 						armedEvent = u'armedAway'
 						self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateAway)
 					else:
 						armedEvent = u'armedStay'
 						self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateStay)
-						self.updateKeypad(partition, u'LEDBypass', 'on')   #LED on since motion sensors are bypassed
+						self.updateKeypad(partition, u'LEDBypass', 'on')   # LED is on since motion sensors are bypassed in Stay mode
 
 					self.triggerEvent(armedEvent)
 					for trig in self.triggerList:
@@ -1332,14 +1425,16 @@ class Plugin(indigo.PluginBase):
 					self.updateKeypad(partition, u'state', kAlarmStateArmed)
 					self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 					self.updateKeypad(partition, u'LEDReady', 'off')
-					self.updateKeypad(partition, u'LEDArmed', 'on')	  # these update LEDs for partitions 1-8
+					self.updateKeypad(partition, u'LEDArmed', 'on')	  # updates LEDs for partitions 1-8
 					self.speak('speakTextArmed')
 					self.trippedZoneList = []
-
+					if self.configUseCustomIcons is True:
+						dev.updateStateImageOnServer(indigo.kStateImageSel.SensorTripped)  # red circle
+						#dev.updateStateImageOnServer(indigo.kStateImageSel.Locked)  # green locked padlock
 
 		elif cmd == '653':
 			# Partition Ready - Forced Arming Enabled
-			self.mylogger.log(3, u"Partition %d Ready" % int(dat))
+			self.logger.debug(u"Partition {} Ready".format(int(dat)))
 			partition = int(dat)
 			self.updateKeypad(partition, u'ReadyState', kReadyStateTrue)
 			self.updateKeypad(partition, u'LEDReady', 'on')
@@ -1350,10 +1445,9 @@ class Plugin(indigo.PluginBase):
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			keyp = " '" + keyp + "'"
-			self.mylogger.log(1, u"Alarm TRIPPED! (Partition %d%s)" % (partition, keyp))
+			self.logger.warning(u"Alarm TRIPPED! (Partition {} '{}')".format(partition, keyp))
 			self.updateKeypad(int(dat), u'state', kAlarmStateTripped)
-			self.updateKeypad(int(dat), u'LEDMemory', 'on')	  # this updates LED for partitions 1-8
+			self.updateKeypad(int(dat), u'LEDMemory', 'on')	  # updates LED for partitions 1-8
 			self.triggerEvent(u'eventAlarmTripped')
 			self.repeatAlarmTrippedNext = time.time()
 			self.repeatAlarmTripped = True
@@ -1368,6 +1462,15 @@ class Plugin(indigo.PluginBase):
 				self.repeatAlarmTripped = False
 				for zone in self.closeTheseZonesList:
 					self.updateZoneState(zone, kZoneStateClosed)
+					if self.configUseCustomIcons is True:
+						dev = indigo.devices[self.zoneList[zone]]
+						zoneType = dev.pluginProps['zoneType']
+						if zoneType == "zoneTypeMotion":
+							dev.updateStateImageOnServer(indigo.kStateImageSel.MotionSensor)
+						else:
+							dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOff)
+
+
 				self.closeTheseZonesList = []
 
 			partition = int(dat)
@@ -1375,12 +1478,17 @@ class Plugin(indigo.PluginBase):
 			keyp = str(dev.pluginProps['partitionName'])
 			keypstate = str(dev.states['state'])
 			if partition == 1 and keypstate == kAlarmStateExitDelay:
-				self.mylogger.log(1, u"Alarm Disarmed. (Partition %d '%s')" % (partition, keyp))
+				self.logger.info(u"Alarm Disarmed. (Partition {} '{}')".format(partition, keyp))
 
 				#Only request bypassed zone list if we are not using IT-100
-				if self.useSerial is False:
-					self.sleep(1)    #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
-					self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616 only if partition was in exit delay and cmd 750 is not sent.
+				#if self.useSerial is False:
+					#self.sleep(5)    #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
+					#self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616 only if partition was in exit delay and cmd 750 is not sent.
+
+			self.logger.debug(u"Bypass Cancelled for all Zones by DSC")
+			for i in range(64):
+				self.updateZoneBypass(i, kZoneBypassNo)
+
 			self.trippedZoneList = []
 			self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
 			self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateDisarmed)
@@ -1389,6 +1497,9 @@ class Plugin(indigo.PluginBase):
 			self.updateKeypad(partition, u'ReadyState', kReadyStateTrue)
 			self.updateKeypad(partition, u'LEDReady', 'on')
 			self.updateKeypad(partition, u'LEDBypass', 'off')
+			if self.configUseCustomIcons is True:
+				dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)  # green circle
+				#dev.updateStateImageOnServer(indigo.kStateImageSel.Unlocked)  # red open padlock
 
 			#self.triggerEvent(u'eventAlarmDisarmed') #use cmd 750 & 751 triggers
 			#self.speak('speakTextDisarmed')  #use cmd 750 & 751 triggers
@@ -1398,50 +1509,52 @@ class Plugin(indigo.PluginBase):
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(1, u"Exit Delay. (Partition %d '%s')" % (partition, keyp))
+			self.logger.info(u"Exit Delay. (Partition {} '{}')".format(partition, keyp))
 			self.updateKeypad(partition, u'state', kAlarmStateExitDelay)
 			self.updateKeypad(partition, u'LEDArmed', 'on')
-			#keyp = indigo.devices[self.keypadList[partition]]
-			#LEDMemoryState = keyp.states["LEDMemory"]
+			if self.configUseCustomIcons is True:
+				dev.updateStateImageOnServer(indigo.kStateImageSel.TimerOn)
 			self.updateKeypad(partition, u'LEDMemory', 'off')
 			if "DSC_Alarm_Memory" in indigo.variables:
-				indigo.variable.updateValue("DSC_Alarm_Memory", value = "no tripped zones")
+				indigo.variable.updateValue("DSC_Alarm_Memory", value="no tripped zones")
 			self.speak('speakTextArming')
 
 		elif cmd == '657':
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(1, u"Entry Delay. (Partition %d '%s')" % (partition, keyp))
+			self.logger.info(u"Entry Delay. (Partition {} '{}')".format(partition, keyp))
 			self.updateKeypad(partition, u'state', kAlarmStateEntryDelay)
 			self.speak('speakTextEntryDelay')
+			if self.configUseCustomIcons is True:
+				dev.updateStateImageOnServer(indigo.kStateImageSel.TimerOn)
 
 		elif cmd == '663':
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(1, u"Keypad Chime Enabled. (Partition %d '%s')" % (partition, keyp))
+			self.logger.info(u"Keypad Chime Enabled. (Partition {} '{}')".format(partition, keyp))
 			self.updateKeypad(partition, u'KeypadChime', kKeypadStateChimeEnabled)
 
 		elif cmd == '664':
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(1, u"Keypad Chime Disabled. (Partition %d '%s')" % (partition, keyp))
+			self.logger.info(u"Keypad Chime Disabled. (Partition {} '{}')".format(partition, keyp))
 			self.updateKeypad(partition, u'KeypadChime', kKeypadStateChimeDisabled)
 
 		elif cmd == '672':
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(1, u"Alarm Panel Failed to Arm. (Partition %d '%s')" % (partition, keyp))
+			self.logger.warning(u"Alarm Panel Failed to Arm. (Partition {} '{}')".format(partition, keyp))
 			self.triggerEvent(u'eventFailToArm')
 			self.speak('speakTextFailedToArm')
 
 		elif cmd == '673':
 			#sends busy reply for partitions that are not defined by the plugin
 			partition = int(dat)
-			self.mylogger.log(3, u"Partition %d Busy." % (partition))
+			self.logger.debug(u"Partition {} Busy/Not defined by plugin.".format(partition))
 
 		elif cmd == '700':
 			m = re.search(r'^(.)..(..)$', dat)
@@ -1449,19 +1562,19 @@ class Plugin(indigo.PluginBase):
 				(partition, user) = (int(m.group(1)), m.group(2))
 				dev = indigo.devices[self.keypadList[partition]]
 				keyp = str(dev.pluginProps['partitionName'])
-				#self.userCodeList = self.pluginPrefs[u'userCode'].split(",")
-				#self.userLabelList = self.pluginPrefs[u'userLabel'].split(",")
-				#self.userLabelDict = dict(zip(self.userCodeList, self.userLabelList))
 				keyu = self.userLabelDict.get(user, "")
 				if keyu:
 					keyu = " '" + keyu +"'"
-				self.mylogger.log(1, u"Alarm Panel Armed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
-				#No info on whether stay or away armed, but cmd 652 is also triggered with that info
+				self.logger.info(u"Alarm Panel Armed by User {}{}. (Partition {} '{}')".format(user, keyu, partition, keyp))
+				# No info on whether stay armed or away armed, but cmd 652 is also triggered and has this info
 				self.updateKeypad(partition, u'state', kAlarmStateArmed)
 				self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 				self.updateKeypad(partition, u'LEDReady', 'off')
 				self.updateKeypad(partition, u'LEDArmed', 'on')
 				self.speak('speakTextArmed')
+				if self.configUseCustomIcons is True:
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorTripped)  # red circle
+					#dev.updateStateImageOnServer(indigo.kStateImageSel.Locked)  # green locked padlock
 				for trig in self.triggerList:
 					trigger = indigo.triggers[trig]
 					if trigger.pluginTypeId == u'userArmed':
@@ -1473,25 +1586,31 @@ class Plugin(indigo.PluginBase):
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(2, u"Alarm Panel Specially Armed. (Partition %d '%s')" % (partition, keyp))
+			self.logger.debug(u"Alarm Panel Specially Armed. (Partition {} '{}')".format(partition, keyp))
 			self.updateKeypad(partition, u'state', kAlarmStateArmed)
 			self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 			self.updateKeypad(partition, u'LEDReady', 'off')
 			self.updateKeypad(partition, u'LEDArmed', 'on')
 			self.speak('speakTextArmed')
+			if self.configUseCustomIcons is True:
+				dev.updateStateImageOnServer(indigo.kStateImageSel.SensorTripped)  # red circle
+				#dev.updateStateImageOnServer(indigo.kStateImageSel.Locked)  # green locked padlock
 
 
 		elif cmd == '702':
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(1, u"Alarm Panel Armed. (Partition %d '%s' with zone(s) bypass)" % (partition, keyp))
+			self.logger.info(u"Alarm Panel Armed. (Partition {} '{}' with zone(s) bypass)".format(partition, keyp))
 			self.updateKeypad(partition, u'state', kAlarmStateArmed)
 			self.updateKeypad(partition, u'ReadyState', kReadyStateFalse)
 			self.updateKeypad(partition, u'LEDReady', 'off')
 			self.updateKeypad(partition, u'LEDArmed', 'on')
 			self.updateKeypad(partition, u'LEDBypass', 'on')
 			self.speak('speakTextArmed')
+			if self.configUseCustomIcons is True:
+				dev.updateStateImageOnServer(indigo.kStateImageSel.SensorTripped)  # red circle
+				#dev.updateStateImageOnServer(indigo.kStateImageSel.Locked)  # green locked padlock
 
 
 		elif cmd == '750':
@@ -1501,18 +1620,15 @@ class Plugin(indigo.PluginBase):
 				(partition, user) = (int(m.group(1)), m.group(2))
 				dev = indigo.devices[self.keypadList[partition]]
 				keyp = str(dev.pluginProps['partitionName'])
-				#self.userCodeList = self.pluginPrefs[u'userCode'].split(",")
-				#self.userLabelList = self.pluginPrefs[u'userLabel'].split(",")
-				#self.userLabelDict = dict(zip(self.userCodeList, self.userLabelList))
 				keyu = self.userLabelDict.get(user, "")
 				if keyu:
 					keyu = " '" + keyu +"'"
-				self.mylogger.log(1, u"Alarm Panel Disarmed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
-				self.sendEmailDisarm(u"Alarm Panel Disarmed by User %s%s. (Partition %d '%s')" % (user, keyu, partition, keyp))
+				self.logger.info(u"Alarm Panel Disarmed by User {}{}. (Partition {} '{}')".format(user, keyu, partition, keyp))
+				self.sendEmailDisarm(u"Alarm Panel Disarmed by User {}{}. (Partition {} '{}')".format(user, keyu, partition, keyp))
 				if "DSC_Last_User_Disarm" in indigo.variables:
-					indigo.variable.updateValue("DSC_Last_User_Disarm", value = "User " + user + keyu)
-				
-				# self.trippedZoneList = []    #We do not want to delete list of tripped zones here
+					indigo.variable.updateValue("DSC_Last_User_Disarm", value="User "+user+keyu)
+
+				# self.trippedZoneList = []    # We do not want to delete list of tripped zones here
 				self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
 				self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateDisarmed)
 				self.updateKeypad(partition, u'LEDArmed', 'off')
@@ -1522,6 +1638,9 @@ class Plugin(indigo.PluginBase):
 				self.updateKeypad(partition, u'LEDBypass', 'off')
 				self.triggerEvent(u'eventAlarmDisarmed')
 				self.speak('speakTextDisarmed')
+				if self.configUseCustomIcons is True:
+					dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)   # green circle
+					#dev.updateStateImageOnServer(indigo.kStateImageSel.Unlocked)  # red open padlock
 
 				for trig in self.triggerList:
 					trigger = indigo.triggers[trig]
@@ -1548,13 +1667,24 @@ class Plugin(indigo.PluginBase):
 				self.repeatAlarmTripped = False
 				for zone in self.closeTheseZonesList:
 					self.updateZoneState(zone, kZoneStateClosed)
+					if self.configUseCustomIcons is True:
+						dev = indigo.devices[self.zoneList[zone]]
+						zoneType = dev.pluginProps['zoneType']
+						if zoneType == "zoneTypeMotion":
+							dev.updateStateImageOnServer(indigo.kStateImageSel.MotionSensor)
+						else:
+							dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOff)
+
 				self.closeTheseZonesList = []
 
 			#Only request bypassed zone list if we are on partition 1 and not using IT-100
-			if (partition == 1) and (self.useSerial is False):
-				self.sleep(1) #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
-				#self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616
-				self.txCmdList.append((kCmdNormal, '0711*1#'))		#triggers cmd 616
+			#if (partition == 1) and (self.useSerial is False):
+				#self.sleep(5) #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
+				##self.txCmdList.append((kCmdNormal, '071' + str(partition) + '*1#'))		#triggers cmd 616
+				#self.txCmdList.append((kCmdNormal, '0711*1#'))		#triggers cmd 616
+			self.logger.debug(u"Bypass Cancelled for all Zones by DSC")
+			for i in range(64):
+				self.updateZoneBypass(i, kZoneBypassNo)
 
 
 		elif cmd == '751':
@@ -1562,7 +1692,7 @@ class Plugin(indigo.PluginBase):
 			partition = int(dat)
 			dev = indigo.devices[self.keypadList[partition]]
 			keyp = str(dev.pluginProps['partitionName'])
-			self.mylogger.log(1, u"Alarm Disarmed by Special Opening (Partition %d '%s')" % (partition, keyp))
+			self.logger.info(u"Alarm Disarmed by Special Opening (Partition {} '{}')".format(partition, keyp))
 			# self.trippedZoneList = []    #We do not want to delete list of tripped zones here
 			self.updateKeypad(partition, u'state', kAlarmStateDisarmed)
 			self.updateKeypad(partition, u'ArmedState', kAlarmArmedStateDisarmed)
@@ -1571,6 +1701,9 @@ class Plugin(indigo.PluginBase):
 			self.updateKeypad(partition, u'ReadyState', kReadyStateTrue)
 			self.updateKeypad(partition, u'LEDReady', 'on')
 			self.updateKeypad(partition, u'LEDBypass', 'off')
+			if self.configUseCustomIcons is True:
+				dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOn)   # green circle
+				#dev.updateStateImageOnServer(indigo.kStateImageSel.Unlocked)  # red open padlock
 
 			self.triggerEvent(u'eventAlarmDisarmed')
 			self.speak('speakTextDisarmed')
@@ -1582,55 +1715,61 @@ class Plugin(indigo.PluginBase):
 						indigo.trigger.execute(trigger.id)
 
 			#Only request bypassed zone list if we are not using IT-100
-			if (partition == 1) and (self.useSerial is False):
-				self.sleep(1) #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
-				self.txCmdList.append((kCmdNormal, '0711*1#'))		#triggers cmd 616
+			#if (partition == 1) and (self.useSerial is False):
+				#self.sleep(5) #add delay if keybus buffer overruns. Only send partition 1 cmd since other partitions don't work
+				#self.txCmdList.append((kCmdNormal, '0711*1#'))		#triggers cmd 616
+			self.logger.debug(u"Bypass Cancelled for all Zones by DSC")
+			for i in range(64):
+				self.updateZoneBypass(i, kZoneBypassNo)
 
 
 		elif cmd == '800':
-			self.mylogger.log(1, u"Alarm Panel Battery is low.")
+			self.logger.warning(u"Alarm Panel Battery is low.")
 			self.sendTroubleEmail(u"Alarm panel battery is low.")
 
 		elif cmd == '801':
-			self.mylogger.log(1, u"Alarm Panel Battery is now ok.")
+			self.logger.info(u"Alarm Panel Battery is now ok.")
 			self.sendTroubleEmail(u"Alarm panel battery is now ok.")
 
 		elif cmd == '802':
-			self.mylogger.log(1, u"AC Power Lost.")
+			self.logger.warning(u"AC Power Lost.")
 			self.sendTroubleEmail(u"AC Power Lost.")
 			self.triggerEvent(u'eventNoticeAC_Trouble')
 
 		elif cmd == '803':
-			self.mylogger.log(1, u"AC Power Restored.")
+			self.logger.info(u"AC Power Restored.")
 			self.sendTroubleEmail(u"AC Power Restored.")
 			self.triggerEvent(u'eventNoticeAC_Restore')
 
 		elif cmd == '806':
-			self.mylogger.log(1, u"An open circuit has been detected across the bell terminals.")
+			self.logger.warning(u"An open circuit has been detected across the bell terminals.")
 			self.sendTroubleEmail(u"An open circuit has been detected across the bell terminals.")
 
 		elif cmd == '807':
-			self.mylogger.log(1, u"The bell circuit has been restored.")
+			self.logger.info(u"The bell circuit has been restored.")
 			self.sendTroubleEmail(u"The bell circuit has been restored.")
 
 		elif cmd == '814':
-			self.mylogger.log(1, u"FTC Trouble.")
+			self.logger.warning(u"FTC Trouble.")
 			self.sendTroubleEmail(u"The panel has failed to communicate successfully to the monitoring station.")
+
+		elif cmd == '815':
+			self.logger.info(u"FTC Trouble Restore.")
+			self.sendTroubleEmail(u"The panel has resumed communications.")
 
 		elif cmd == '840':
 			partition = int(dat)
 			if partition in self.keypadList:
 				dev = indigo.devices[self.keypadList[partition]]
 				keyp = str(dev.pluginProps['partitionName'])
-				keyp = " '" + keyp + "'"
-				self.mylogger.log(1, u"Trouble Status (LED ON). (Partition %d%s)" % (partition, keyp))
+				self.logger.warning(u"Trouble Status (LED ON). (Partition {} '{}')".format(partition, keyp))
 				self.updateKeypad(partition, u'LEDTrouble', 'on')   # this updates LED for partitions 1-8
 				self.troubleClearedTimer = 0
 
 		elif cmd == '841':
 			#Sends Trouble off for all partitions, including undefined ones.
 			partition = int(dat)
-			self.mylogger.log(2, u"Trouble Status Restore (LED OFF). (Partition %d)" % (partition))
+			self.logger.debug(u"Trouble Status Restore (LED OFF). (Partition {})".format(partition))
 			self.updateKeypad(partition, u'LEDTrouble', 'off')  # this updates LED for partitions 1-8
 			if self.troubleCode > 0:
 				# If the trouble light goes off, set a 10 second timer.
@@ -1640,7 +1779,7 @@ class Plugin(indigo.PluginBase):
 				self.troubleClearedTimer = 10
 
 		elif cmd == '849':
-			self.mylogger.log(3, u"Received trouble code byte 0x%s" % dat)
+			self.logger.debug(u"Received trouble code byte 0x{}".format(dat))
 			newCode = int(dat, 16)
 
 			if newCode != self.troubleCode:
@@ -1658,25 +1797,25 @@ class Plugin(indigo.PluginBase):
 					self.sendTroubleEmail(body)
 
 		elif cmd == '851':
-			self.mylogger.log(3, u"Partition Busy Restore. (Partition %d)" % int(dat))
+			self.logger.debug(u"Partition Busy Restore. (Partition {})".format(int(dat)))
 		elif cmd == '896':
-			self.mylogger.log(3, u"Keybus Fault")
+			self.logger.debug(u"Keybus Fault")
 		elif cmd == '897':
-			self.mylogger.log(3, u"Keybus Fault Restore")
+			self.logger.debug(u"Keybus Fault Restore")
 		elif cmd == '900':
-			self.mylogger.logError(u"Code Required")
+			self.logger.error(u"User Access Code Required")
 
 		elif cmd == '901':
 			#this updates the virtual keypad
 			#for char in dat:
-			#	self.mylogger.log(3, u"LCD DEBUG: %d" % ord(char))
+			#	self.logger.debug(u"LCD DEBUG: {}".format(ord(char)))
 			m = re.search(r'^...(..)(.*)$', dat)
 			if m:
 				lcdText = re.sub(r'[^ a-zA-Z0-9_/\:-]+', ' ', m.group(2))
-				half = len(lcdText)/2
+				half = int(len(lcdText)/2)
 				half1 = lcdText[:half]
 				half2 = lcdText[half:]
-				self.mylogger.log(3, u"LCD Update, Line 1:'%s' Line 2:'%s'" % (half1, half2))
+				self.logger.debug(u"LCD Update, Line 1:'{}' Line 2:'{}'".format(half1, half2))
 				self.updateKeypad(0, u'LCDLine1', half1)
 				self.updateKeypad(0, u'LCDLine2', half2)
 
@@ -1684,7 +1823,7 @@ class Plugin(indigo.PluginBase):
 			m = re.search(r'^(.)(.)$', dat)
 			if m:
 				(ledName, ledState) = (kLedIndexList[int(m.group(1))], kLedStateList[int(m.group(2))])
-				self.mylogger.log(3, u"LED '%s' is '%s'." % (ledName, ledState))
+				self.logger.debug(u"LED '{}' is '{}'.".format(ledName, ledState))
 
 				if ledState == 'flashing':
 					ledState = 'on'
@@ -1702,34 +1841,34 @@ class Plugin(indigo.PluginBase):
 
 
 		elif cmd == '904':
-			self.mylogger.log(3, u"Beep Status")
+			self.logger.debug(u"Beep Status")
 
 		elif cmd == '905':
-			self.mylogger.log(3, u"Tone Status")
+			self.logger.debug(u"Tone Status")
 
 		elif cmd == '906':
-			self.mylogger.log(3, u"Buzzer Status")
+			self.logger.debug(u"Buzzer Status")
 
 		elif cmd == '907':
-			self.mylogger.log(3, u"Door Chime Status")
+			self.logger.debug(u"Door Chime Status")
 
 		elif cmd == '908':
 			m = re.search(r'^(..)(..)(..)$', dat)
 			if m:
-				self.mylogger.log(3, u"DSC Software Version %s.%s" % (m.group(1), m.group(2)))
-				
+				self.logger.debug(u"DSC Software Version {}.{}".format(m.group(1), m.group(2)))
+
 		elif cmd == '912':
-			self.mylogger.logError(u"Command Output Pressed")
+			self.logger.error(u"Command Output Pressed")
 
 		elif cmd == '921':
-			self.mylogger.logError(u"Master Code Required")
+			self.logger.error(u"Master Code Required")
 
 		elif cmd == '922':
-			self.mylogger.logError(u"Installers Code Required")
+			self.logger.error(u"Installer Code Required")
 
 		else:
-			#self.mylogger.log(3, u"RX: %s" % data)
-			self.mylogger.log(3, u"Unrecognized command received (Cmd:%s Dat:%s Sum:%d)" % (cmd, dat, sum))
+			#self.logger.debug(u"RX: {}".format(data))
+			self.logger.debug(u"Unrecognized command received (Cmd:{} Dat:{} Sum:{})".format(cmd, dat, sum))
 
 		return (cmd, dat)
 
@@ -1744,8 +1883,8 @@ class Plugin(indigo.PluginBase):
 	def updateSensorTemp(self, sensorNum, key, temp):
 		if temp > 127:
 			temp = 127 - temp
-		self.mylogger.log(3, u"Temp sensor %d %s temp now %d degrees." % (sensorNum, key, temp))
-		if sensorNum in self.tempList.keys():
+		self.logger.debug(u"Temp sensor {} {} temp now {} degrees.".format(sensorNum, key, temp))
+		if sensorNum in list(self.tempList.keys()):
 			if key == 'inside':
 				self.tempList[sensorNum].updateStateOnServer(key=u"temperatureInside", value=temp)
 			elif key == 'outside':
@@ -1756,7 +1895,7 @@ class Plugin(indigo.PluginBase):
 				self.tempList[sensorNum].updateStateOnServer(key=u"setPointHeat", value=temp)
 
 			if self.tempList[sensorNum].pluginProps['zoneLogChanges'] == 1:
-				self.mylogger.log(1, u"Temp sensor %d %s temp now %d degrees." % (sensorNum, key, temp))
+				self.logger.info(u"Temp sensor {} {} temp now {} degrees.".format(sensorNum, key, temp))
 
 
 	# Updates zone group
@@ -1787,7 +1926,7 @@ class Plugin(indigo.PluginBase):
 	#
 	def updateZoneState(self, zoneKey, newState):
 
-		if zoneKey in self.zoneList.keys():
+		if zoneKey in list(self.zoneList.keys()):
 			zone = indigo.devices[self.zoneList[zoneKey]]
 			zoneType = zone.pluginProps['zoneType']
 			#zonePartition = zone.pluginProps['zonePartition']
@@ -1799,37 +1938,37 @@ class Plugin(indigo.PluginBase):
 				zone.updateStateOnServer(key=u"LastChangedShort", value="0m")
 				zone.updateStateOnServer(key=u"LastChangedTimer", value=0)
 				zone.updateStateOnServer(key=u"state", value=newState)
-				time = datetime.now().strftime("%H:%M:%S, %Y-%m-%d")
+				timeNowFormatted = datetime.now().strftime("%H:%M:%S, %Y-%m-%d")
 
 				# Check if this zone is assigned to a zone group so we can update it
 				for devId in self.zoneGroupList:
-					#self.mylogger.log(3, u"Zone Group id: %s contains %s" % (zone.id,self.zoneGroupList[devId]))
+					#self.logger.debug(u"Zone Group id: {} contains {}".format(zone.id,self.zoneGroupList[devId]))
 					if str(zone.id) in self.zoneGroupList[devId]:
 						self.updateZoneGroup(devId)
 
-				if 'var' in zone.pluginProps.keys():
+				if 'var' in list(zone.pluginProps.keys()):
 					self.updateVariable(zone.pluginProps['var'], newState)
 
 				if newState == kZoneStateTripped:
-					self.mylogger.log(1, u"Alarm Zone '%s' TRIPPED!" % zone.name)
+					self.logger.warning(u"Alarm Zone '{}' TRIPPED!".format(zone.name))
 
 				if zone.pluginProps['zoneLogChanges'] == 1:
 					if newState == kZoneStateOpen:
-						self.mylogger.log(1, u"Alarm Zone '%s' Opened." % zone.name)
+						self.logger.info(u"Alarm Zone '{}' Opened.".format(zone.name))
 						if zoneType != "zoneTypeMotion":
-							indigo.variable.updateValue("DSC_Last_Zone_Active", value = "%s Opened at %s." % (zone.name, time))
+							indigo.variable.updateValue("DSC_Last_Zone_Active", value="{} Opened at {}.".format(zone.name, timeNowFormatted))
 					elif newState == kZoneStateClosed:
-						self.mylogger.log(1, u"Alarm Zone '%s' Closed." % zone.name)
+						self.logger.info(u"Alarm Zone '{}' Closed.".format(zone.name))
 						if zoneType != "zoneTypeMotion":
-							indigo.variable.updateValue("DSC_Last_Zone_Active", value = "%s Closed at %s." % (zone.name, time))
+							indigo.variable.updateValue("DSC_Last_Zone_Active", value="{} Closed at {}.".format(zone.name, timeNowFormatted))
 						
 				if zoneType == "zoneTypeMotion":
-					indigo.variable.updateValue("DSC_Last_Motion_Active", value = "%s at %s." % (zone.name, time))
-					
+					indigo.variable.updateValue("DSC_Last_Motion_Active", value="{} at {}.".format(zone.name, timeNowFormatted))
+
 
 	def updateZoneBypass(self, zoneKey, newState):
 
-		if zoneKey in self.zoneList.keys():
+		if zoneKey in list(self.zoneList.keys()):
 			zone = indigo.devices[self.zoneList[zoneKey]]
 			#zoneType = zone.pluginProps['zoneType']
 
@@ -1839,19 +1978,18 @@ class Plugin(indigo.PluginBase):
 				# This is a new bypass state, update all states
 				zone.updateStateOnServer(key=u"bypass", value=newState)
 
-				if 'var' in zone.pluginProps.keys():
+				if 'var' in list(zone.pluginProps.keys()):
 					self.updateVariable(zone.pluginProps['var'], newState)
 
-				#if zone.pluginProps['zoneLogChanges'] == 1:
 				if newState == kZoneBypassYes:
-					self.mylogger.log(1, u"Alarm Zone '%s' Bypassed." % zone.name)
+					self.logger.info(u"Alarm Zone '{}' Bypassed.".format(zone.name))
 				elif newState == kZoneBypassNo:
-					self.mylogger.log(1, u"Alarm Zone '%s' Bypass Cancelled." % zone.name)
+					self.logger.info(u"Alarm Zone '{}' Bypass Cancelled.".format(zone.name))
 
 
 	def updateKeypad(self, partition, stateName, newState):
 
-		self.mylogger.log(4, u"Updating state %s for keypad on partition %u to %s." % (stateName, partition, newState))
+		self.logger.threaddebug(u"Updating state {} for keypad on partition {} to {}.".format(stateName, partition, newState))
 
 		# If we're updating the main keypad state, update the variable too
 		if stateName == u'state':
@@ -1863,18 +2001,18 @@ class Plugin(indigo.PluginBase):
 				keyp.updateStateOnServer(key=stateName, value=newState)
 			return
 
-		if partition in self.keypadList.keys():
+		if partition in list(self.keypadList.keys()):
 			keyp = indigo.devices[self.keypadList[partition]]
 			keyp.updateStateOnServer(key=stateName, value=newState)
 
 
 	######################################################################################
-	# Misc
+	# Sending email of tripped zones
 	######################################################################################
 
 	def sendZoneTrippedEmail(self):
 
-		if (len(self.configEmailUrgent) == 0) or (len(self.trippedZoneList) == 0):
+		if not self.configEmailUrgent or not self.trippedZoneList:
 			return
 
 		theBody = "The following zone(s) have been tripped:\n\n"
@@ -1888,48 +2026,49 @@ class Plugin(indigo.PluginBase):
 
 			zone = indigo.devices[self.zoneList[zoneNum]]
 
-			theBody += "%s (currently %s)\n" % (zone.name, stateNow)
+			theBody += "{} (currently {})\n".format(zone.name, stateNow)
 
 		theBody += "\n--\nDSC Alarm Plugin\n\n"
 
-		self.mylogger.log(1, u"Sending zone tripped email to %s." % self.configEmailUrgent)
+		self.logger.info(u"Sending zone tripped email to {}.".format(self.configEmailUrgent))
 
 		contentPrefix = self.pluginPrefs.get(u'emailUrgentContent', '')
-		if len(contentPrefix) > 0:
+		if contentPrefix:
 			theBody = contentPrefix + "\n\n" + theBody
 
 		indigo.server.sendEmailTo(self.configEmailUrgent, subject=self.configEmailUrgentSubject, body=theBody)
 
-########################################################################################
+##########################################################################################
 ############# Kidney514 ##########  Sending email of who is disarming
-########################################################################################
+##########################################################################################
 
 	def sendEmailDisarm(self, bodyText):
 
-		if len(self.configEmailDisarm) == 0:
+		if not (self.configEmailDisarm):
 			return
 
-		self.mylogger.log(1, u"Sending Disarmed by: email to %s." % self.configEmailDisarm)
+		self.logger.info(u"Sending Disarmed by: email to {}.".format(self.configEmailDisarm))
 
 		contentPrefix = self.pluginPrefs.get(u'EmailDisarmContent', '')
-		if len(contentPrefix) > 0:
+		if contentPrefix:
 			bodyText = contentPrefix + "\n\n" + bodyText
 
 		indigo.server.sendEmailTo(self.configEmailDisarm, subject=self.configEmailDisarmSubject, body=bodyText)
 
-########################################################################################
-########################################################################################
+##########################################################################################
+# sending emails
+##########################################################################################
 
 
 	def sendTroubleEmail(self, bodyText):
 
-		if len(self.configEmailNotice) == 0:
+		if not self.configEmailNotice:
 			return
 
-		self.mylogger.log(1, u"Sending trouble email to %s." % self.configEmailNotice)
+		self.logger.info(u"Sending trouble email to {}.".format(self.configEmailNotice))
 
-		contentPrefix = self.pluginPrefs.get(u'updaterEmailContent', '')
-		if len(contentPrefix) > 0:
+		contentPrefix = self.pluginPrefs.get(u'emailNoticeContent', '')
+		if contentPrefix:
 			bodyText = contentPrefix + "\n\n" + bodyText
 
 		indigo.server.sendEmailTo(self.configEmailNotice, subject=self.configEmailNoticeSubject, body=bodyText)
@@ -1937,17 +2076,17 @@ class Plugin(indigo.PluginBase):
 
 	def sendPanicEmail(self, bodyText):
 
-		if len(self.configEmailUrgent) == 0:
+		if not self.configEmailUrgent:
 			return
 
-		self.mylogger.log(1, u"Sending panic alert email to %s." % self.configEmailUrgent)
+		self.logger.info(u"Sending panic alert email to {}.".format(self.configEmailUrgent))
 
 		contentPrefix = self.pluginPrefs.get(u'emailUrgentContent', '')
-		if len(contentPrefix) > 0:
+		if contentPrefix:
 			bodyText = contentPrefix + "\n\n" + bodyText
 
 		indigo.server.sendEmailTo(self.configEmailUrgent, subject=self.configEmailUrgentSubject, body=bodyText)
-		#if no email address is specified the speak part does not trigger
+		# if no email address is specified the speak part does not trigger
 		say = self.pluginPrefs['speakTextPanic'] + ' Keypad: ' + bodyText + '.'
 		self.sayThis(say)
 
@@ -1955,25 +2094,24 @@ class Plugin(indigo.PluginBase):
 
 	def sendDuressEmail(self, bodyText):
 
-		if len(self.configEmailUrgent) == 0:
+		if not self.configEmailUrgent:
 			return
 
-		self.mylogger.log(1, u"Sending duress alarm email to %s." % self.configEmailUrgent)
+		self.logger.info(u"Sending duress alarm email to {}.".format(self.configEmailUrgent))
 
 		contentPrefix = self.pluginPrefs.get(u'emailUrgentContent', '')
-		if len(contentPrefix) > 0:
+		if contentPrefix:
 			bodyText = contentPrefix + "\n\n" + bodyText
 
 		indigo.server.sendEmailTo(self.configEmailUrgent, subject=self.configEmailUrgentSubject, body=bodyText)
-		#if no email address specified the speak part does not trigger
+		# if no email address specified the speak part does not trigger
 		say = self.pluginPrefs['speakTextPanic'] + ' Keypad: ' + bodyText + '.'
 		self.sayThis(say)
 
 
-
 	def sayThis(self, text):
-		self.mylogger.log(3, u"SAY: %s" % text)
-		#The default variable is DSC_Alarm_Text
+		self.logger.debug(u"SAY: {}".format(text))
+		# The default variable is DSC_Alarm_Text
 		if self.configSpeakVariable is not None:
 			if self.configSpeakVariable in indigo.variables:
 				indigo.variable.updateValue(self.configSpeakVariable, value=text)
@@ -1982,11 +2120,11 @@ class Plugin(indigo.PluginBase):
 
 
 	def speak(self, textId):
-		self.mylogger.log(3, u"ID: %s" % textId)
+		self.logger.debug(u"ID: {}".format(textId))
 		if self.pluginPrefs['speakingEnabled'] is False:
 			return
 
-		if len(self.pluginPrefs[textId]) == 0:
+		if not (self.pluginPrefs[textId]):
 			return
 
 		if textId == 'speakTextFailedToArm':
@@ -2041,7 +2179,7 @@ class Plugin(indigo.PluginBase):
 		if self.createVariables is False:
 			return
 
-		#self.mylogger.log(3, u"Variable: %s" % varID)
+		#self.logger.debug(u"Variable: {}".format(varID))
 
 		if varID is None:
 			return
@@ -2068,6 +2206,21 @@ class Plugin(indigo.PluginBase):
 		else:
 			return ''
 
+# 		############ Alternate Version #########################
+# 		# If time is less than 100 min then show XXm
+# 		if minutes < 100:
+# 			return str(minutes) + 'm'
+# 		# If it's less than 49 hours then show XXh
+# 		elif minutes < 2881:
+# 			return str(int(minutes / 60)) + 'h'
+# 		# If it's less than 365 days then show XXd
+# 		elif minutes < 525601:
+# 			return str(int(minutes / 1440)) + 'd'
+# 		# If it's anything more than 365 days then show XXmonths
+# 		else:
+# 			return str(int(minutes / 43800)) + 'months'
+# 		########################################################
+
 
 
 	######################################################################################
@@ -2075,7 +2228,7 @@ class Plugin(indigo.PluginBase):
 	######################################################################################
 
 	def runConcurrentThread(self):
-		self.mylogger.log(3, u"runConcurrentThread called")
+		self.logger.threaddebug(u"runConcurrentThread called")
 		self.minuteTracker = time.time() + 60
 		self.nextUpdateCheckTime = 0
 
@@ -2085,7 +2238,7 @@ class Plugin(indigo.PluginBase):
 			self.timeNow = time.time()
 
 			if self.state == self.States.STARTUP:
-				self.mylogger.log(3, u"STATE: Startup")
+				self.logger.debug(u"STATE: Startup")
 
 				if self.configRead is False:
 					if self.getConfiguration(self.pluginPrefs) is True:
@@ -2102,7 +2255,7 @@ class Plugin(indigo.PluginBase):
 				self.sleep(1)
 
 			elif self.state == self.States.HOLD_RETRY:
-				self.mylogger.log(1, "Plugin will attempt to re-initialize again in %u minutes." % self.currentHoldRetryTime)
+				self.logger.warning("Plugin will attempt to re-initialize again in {} minutes.".format(self.currentHoldRetryTime))
 				self.nextRetryTime = self.timeNow + (kHoldRetryTimeMinutes*60)
 				self.state = self.States.HOLD_RETRY_LOOP
 
@@ -2125,7 +2278,7 @@ class Plugin(indigo.PluginBase):
 						self.state = self.States.ENABLE_TIME_BROADCAST
 
 				else:
-					#self.mylogger.logError('Error opening port, will retry in %u minutes.' % self.currentHoldRetryTime)
+					#self.logger.error(u"Error opening port, will retry in {} minutes.".format(self.currentHoldRetryTime))
 					self.state = self.States.HOLD_RETRY
 
 			elif self.state == self.States.SO_CONNECT:
@@ -2138,21 +2291,21 @@ class Plugin(indigo.PluginBase):
 				while attemptLogin is True:
 					attemptLogin = False
 					rx = self.sendPacket('005' + self.pluginPrefs[u'TwoDS_Password'], waitFor='505')
-					if len(rx) == 0:
-						self.mylogger.logError('Timeout waiting for Envisalink to respond to login request.')
+					if not rx or rx == "-":
+						self.logger.error(u"Timeout waiting for Envisalink to respond to login request.")
 					else:
 						rx = int(rx)
 						if rx == 0:
-							self.mylogger.logError('Envisalink refused login request.')
+							self.logger.error(u"Envisalink refused login request.")
 						elif rx == 1:
 							err = False
-							self.mylogger.log(1, "Connected to Envisalink.")
+							self.logger.info("Connected to Envisalink.")
 						elif rx == 3:
 							# 2DS sent login request, retry (Happens when socket is first opened)
-							self.mylogger.log(3, u"Received login request, retrying login...")
+							self.logger.debug(u"Received login request, retrying login...")
 							attemptLogin = True
 						else:
-							self.mylogger.logError('Unknown response from Envisalink login request.')
+							self.logger.error(u"Unknown response from Envisalink login request.")
 
 				# This delay is required otherwise 2DS locks up
 				self.sleep(1)
@@ -2166,38 +2319,38 @@ class Plugin(indigo.PluginBase):
 			elif self.state == self.States.ENABLE_TIME_BROADCAST:
 
 				# Enable time broadcast
-				self.mylogger.log(2, "Enabling Time Broadcast")
+				self.logger.debug("Enabling Time Broadcast")
 				rx = self.sendPacket('0561')
-				if len(rx) > 0:
-					self.mylogger.log(2, u"Time Broadcast enabled.")
+				if rx:
+					self.logger.debug(u"Time Broadcast enabled.")
 					self.state = self.States.BOTH_PING
 				else:
-					self.mylogger.logError(u'Error enabling Time Broadcast.')
+					self.logger.error(u"Error enabling Time Broadcast.")
 					self.state = self.States.HOLD_RETRY
 
 			elif self.state == self.States.BOTH_PING:
 
 				#Ping the panel to confirm we are in communication
 				err = True
-				self.mylogger.log(2, u"Pinging the panel to test communication...")
+				self.logger.debug(u"Pinging the panel to test communication...")
 				rx = self.sendPacket('000')
-				if len(rx) > 0:
-					self.mylogger.log(2, u"Ping was successful.")
+				if rx:
+					self.logger.debug(u"Ping was successful.")
 					err = False
 				else:
-					self.mylogger.logError('Error pinging panel, aborting.')
+					self.logger.error(u"Error pinging panel, aborting.")
 
 				if err is True:
 					self.state = self.States.HOLD_RETRY
 				else:
 					#Request a full state update
-					self.mylogger.log(2, "Requesting a full state update.")
+					self.logger.debug("Requesting a full state update.")
 					rx = self.sendPacket('001')
-					if len(rx) == 0:
-						self.mylogger.logError('Error getting state update.')
+					if not rx:
+						self.logger.error(u"Error getting state update.")
 						self.state = self.States.HOLD_RETRY
 					else:
-						self.mylogger.log(2, "State update request successful, initialization complete, starting normal operation.")
+						self.logger.debug("State update request successful, initialization complete, starting normal operation.")
 						self.state = self.States.BOTH_POLL
 
 			elif self.state == self.States.BOTH_POLL:
@@ -2206,17 +2359,17 @@ class Plugin(indigo.PluginBase):
 				else:
 
 					if (self.useSerial is False) and (self.timeNow > self.nextPingTime):
-						#self.mylogger.log(1,"Pinging 2DS")
+						#self.logger.debug(u"Pinging Envisalink")
 						self.txCmdList.append((kCmdNormal, '000'))
 						self.nextPingTime = self.timeNow + kPingInterval
 
-					if len(self.txCmdList) > 0:
+					if self.txCmdList:
 						(cmdType, data) = self.txCmdList[0]
 						if cmdType == kCmdNormal:
 							txRsp = self.sendPacket(data)
 							if txRsp == '-':
 								# If we receive - socket has closed, lets re-init
-								self.mylogger.logError('Tried to send data but socket seems to have closed.  Trying to re-initialize.')
+								self.logger.error(u"Tried to send data but socket seems to have closed.  Trying to re-initialize.")
 								self.state = self.States.BOTH_INIT
 							else:
 								# send was a success, remove command from queue
@@ -2229,7 +2382,7 @@ class Plugin(indigo.PluginBase):
 						(rxRsp, rxData) = self.readPacket()
 						if rxRsp == '-':
 							# If we receive - socket has closed, lets re-init
-							self.mylogger.logError('Tried to read data but socket seems to have closed.  Trying to re-initialize.')
+							self.logger.error(u"Tried to read data but socket seems to have closed.  Trying to re-initialize.")
 							self.state = self.States.BOTH_INIT
 
 
@@ -2252,9 +2405,6 @@ class Plugin(indigo.PluginBase):
 			# If a minute has elapsed
 			if self.timeNow >= self.minuteTracker:
 
-				# Do we need to check for a new version?
-				self.updater.checkVersionPoll()
-
 				# Increment all zone changed timers
 				self.minuteTracker += 60
 				for zoneKey in self.zoneList.keys():
@@ -2274,10 +2424,10 @@ class Plugin(indigo.PluginBase):
 
 
 		self.closePort()
-		self.mylogger.log(3, u"Exiting Concurrent Thread")
+		self.logger.threaddebug(u"Exiting Concurrent Thread")
 
 
 	def stopConcurrentThread(self):
-		self.mylogger.log(3, u"stopConcurrentThread called")
+		self.logger.threaddebug(u"stopConcurrentThread called")
 		self.shutdown = True
-		self.mylogger.log(3, u"Exiting stopConcurrentThread")
+		self.logger.threaddebug(u"Exiting stopConcurrentThread")
