@@ -11,8 +11,7 @@ Anything related to thermostats has not been field tested.
 The plugin can be found on Github and in the Indigo Plugin Store.
 The Github repository also shows examples for a control page, buttons for Arm and Disarm and icons for zones, bypass etc.
 https://github.com/IndigoDomotics/DSC-Alarm
-This plugin should be compatible with Python 2.7 and Python 3.3 and requires Indigo 7.0 and higher. 
-In its default setting with API 3.0 it runs under Python 3 and requires Indigo 2022.1 and higher
+This plugin should be compatible with Python 2.7 and Python 3.10 and requires Indigo 7.0 and higher. In its default setting with API 3.0 it runs under Python 3.
 
 """
 
@@ -959,7 +958,7 @@ class Plugin(indigo.PluginBase):
 			data = self.port.readline()
 		except Exception as err:
 			self.logger.error(u"Connection RX Error: {}".format(str(err)))
-			data = '-'
+			data = '-'.encode('utf-8')   #encode in bytes to be compatible with how data are received from serial port
 		except:
 			self.logger.error(u"Connection RX Problem, plugin quitting")
 			exit()
@@ -1029,6 +1028,7 @@ class Plugin(indigo.PluginBase):
 		if not data:
 			return ('', '')
 		elif data == '-':
+			self.logger.debug("socket has closed")
 			# socket has closed, return with signal to re-initialize
 			return ('-', '')
 
