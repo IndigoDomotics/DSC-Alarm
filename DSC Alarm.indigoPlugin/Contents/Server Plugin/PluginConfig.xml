@@ -7,7 +7,7 @@
 	</Field>
     <Field id="simpleSeparator1" type="separator"/>
 
-	<Field type="menu" id="configInterface" defaultValue="serial">
+	<Field type="menu" id="configInterface" defaultValue="twods">
 		<Label>Select your Interface:</Label>
 		<List>
 			<Option value="serial">IT-100 or PC-5401</Option>
