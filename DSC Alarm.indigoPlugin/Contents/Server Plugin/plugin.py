@@ -90,12 +90,13 @@ class Plugin(indigo.PluginBase):
 
 		# ============================ Configure Logging =================================
 		try:
-			self.logLevel = int(self.pluginPrefs[u"logLevel"])
+			self.logLevel = int(self.pluginPrefs.get(u"logLevel",20))
 			if self.logLevel < 5:  # convert old logging pref settings to level 20(INFO)
 				self.logLevel = logging.INFO
 				self.logger.info("we are converting old log settings")
 		except:
 			self.logLevel = logging.INFO
+			self.logger.info("we are forcing log settings to INFO")
 		# Set the format and level handlers for the logger
 		log_format = '%(asctime)s.%(msecs)03d\t%(levelname)-10s\t%(name)s.%(funcName)-28s %(msg)s'
 		self.plugin_file_handler.setFormatter(logging.Formatter(fmt=log_format, datefmt='%Y-%m-%d %H:%M:%S'))
@@ -842,14 +843,14 @@ class Plugin(indigo.PluginBase):
 		try:
 
 			# Tell our logging class to reread the config for logging level changes
-			self.logLevel = int(self.pluginPrefs[u"logLevel"])  #new routine
+			self.logLevel = int(self.pluginPrefs.get(u"logLevel",20))  #new routine
 			self.indigo_log_handler.setLevel(self.logLevel)  #new routine
 			self.logger.debug(u"getConfiguration start. Log Levels are set to \"{}\".".format(kLogLevelList[int(self.logLevel/10)]))
-			#self.logger.debug(u"getConfiguration start. Log Levels are set to \"{}\".".format(valuesDict['logLevel']))
+			#self.logger.debug(u"getConfiguration start. Log Levels are set to \"{}\".".format(valuesDict.get('logLevel',20)))
 		
 			# Setting log level of private plugin log handler to only log threaddebug events if this is the setting in logging preferences.
 			# Normally, the private log handler always logs threaddebug, which can fill up the log quite a lot.
-			if valuesDict['logLevel'] == "5":
+			if self.logLevel == 5:
 				self.plugin_file_handler.setLevel(logging.THREADDEBUG)
 				self.logger.debug(u"Private Log Handler set to THREADDEBUG")
 			else:
@@ -857,18 +858,18 @@ class Plugin(indigo.PluginBase):
 				self.logger.debug(u"Private Log Handler set to DEBUG")
 
 			# Get setting of Create Variables checkbox
-			if valuesDict[u'createVariables'] is True:
+			if valuesDict.get(u'createVariables', False) is True:
 				self.createVariables = True
 			else:
 				self.createVariables = False
 
 			# If the variable folder doesn't exist, disable variables, we're done!
-			if valuesDict[u'variableFolder'] not in indigo.variables.folders:
+			if valuesDict.get(u'variableFolder') not in indigo.variables.folders:
 				self.createVariables = False
 
 			self.useSerial = False
-			if valuesDict[u'configInterface'] == 'serial':
-				# using serial port interface IT-100 or similar
+			if valuesDict.get(u'configInterface', 'twods') == 'serial':
+				# using older serial port interface IT-100 or similar
 				self.useSerial = True
 
 			self.configKeepTimeSynced = valuesDict.get(u'syncTime', True)
@@ -898,7 +899,7 @@ class Plugin(indigo.PluginBase):
 			return True
 
 		except:
-			self.logger.debug(u"Error reading plugin configuration. (happens on very first launch)")
+			self.logger.warning(u"Error reading plugin configuration. Happens on very first launch! Open plugin configuration, review settings and save.")
 
 			return False
 
