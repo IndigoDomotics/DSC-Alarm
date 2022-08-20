@@ -37,11 +37,10 @@
 		<Name>Trigger Panic Alarm</Name>
 		<CallbackMethod>methodPanicAlarm</CallbackMethod>
 		<ConfigUI>
-			<Field type="menu" id="panicAlarmType" defaultValue="4">
+			<Field type="menu" id="panicAlarmType" defaultValue="3">
 				<Label>Panic Type:</Label>
 				<List>
-					<Option value="4">Duress</Option>
-					<Option value="3">Panic</Option>
+					<Option value="3">Panic/Police</Option>
 					<Option value="2">Ambulance</Option>
 					<Option value="1">Fire</Option>
 				</List>
@@ -68,20 +67,20 @@
 				<Label>     Function Keys: 1(a), 2(b), 3(c), 4(d), 5(e)</Label>
 			</Field>
 			<Field id="label4" type="label">
-				<Label>     Arrow Keys: Left(&lt;), Right(&gt;), Both(=)</Label>
+				<Label>     Arrow Keys: Left(&#8592;), Right(&#8594;), Both(&#8592;&#8594;)</Label>
 			</Field>
 			<Field id="label5" type="label">
 				<Label>     Panic Keys: Fire(F), Ambulance(A), Panic(P)</Label>
 			</Field>
 			<Field id="label6" type="label">
-				<Label>     Long Keypress: Key followed by L.  ie. '2L' to hold 2.</Label>
+				<Label>     Long Keypress: Key followed by L  e.g. '2L' to hold 2.</Label>
 			</Field>	
 			<Field id="space1" type="label"><Label/></Field>
 			<Field id="label8" type="label">
 				<Label>Example:</Label>
 			</Field>
 			<Field id="label10" type="label">
-				<Label>     b236&gt;  would press function key 2, digits 236, right arrow. Special keys will not work with Envisalink.</Label>
+				<Label>     b236&#8594;  would press function key 2, digits 236, right arrow. Special keys will not work with Envisalink.</Label>
 			</Field>
 		</ConfigUI>
 	</Action>
@@ -157,7 +156,7 @@
 		<CallbackMethod>methodSyncTime</CallbackMethod>
 		<ConfigUI>
 			<Field id="label1" type="label">
-				<Label>This sets the time and date on the alarm to be the same as the Indigo host computer.</Label>
+				<Label>This sets the time and date on the DSC panel to be the same as the Indigo host computer.</Label>
 			</Field>
 			<Field id="space0" type="label"><Label/></Field>
 			<Field id="label2" type="label">
