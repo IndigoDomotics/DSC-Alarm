@@ -30,11 +30,18 @@
 		<Label>(i.e. envisalink or 192.168.1.50; fixed IP is preferred)</Label>
 	</Field>
 
+	<Field id="TwoDS_Port" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods" defaultValue="4025">
+		<Label>Port:</Label>
+	</Field>
+	<Field id="TwoDS_PortLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>(default port number = 4025)</Label>
+	</Field>
+
 	<Field id="TwoDS_Password" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods" secure="true">
 		<Label>Password:</Label>
 	</Field>
 	<Field id="snmpCommunityLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>(default = user; max. 6 char.; except EVL-4 10 char.)</Label>
+		<Label>(default = user; max. 6 ASCII digits; except EVL-4 allows 10 digits)</Label>
 	</Field>
 
 
@@ -42,7 +49,7 @@
 		<Label>Disarm Code:</Label>
 	</Field>
 	<Field id="codeLabel" type="label" visibleBindingId="code" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>This can be a password unique for Indigo Users, as long as it is programmed into the DSC panel.</Label>
+		<Label>This can be a 4-6 digit passcode unique for Indigo Users, as long as it is programmed into the DSC panel.</Label>
 	</Field>
 
 	<Field
@@ -274,10 +281,6 @@
 
 	<!-- Debug settings -->
 	<Field id="simpleSeparator2" type="separator"/>
-	<Field id="midLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>Set the level of information recorded to the Indigo log.</Label>
-	</Field>
-
     <Field id="logLevel" type="menu" defaultValue="20">
         <Label>Event Logging Level:</Label>
         <List>
@@ -289,5 +292,9 @@
             <Option value="50">Critical Errors Only</Option>
         </List>
     </Field>            
+	<Field id="midLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>Set the level of information recorded to the Indigo log.</Label>
+	</Field>
+
 
 </PluginConfig>

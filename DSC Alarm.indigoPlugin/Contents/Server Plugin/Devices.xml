@@ -133,7 +133,8 @@
 					<List>
 						<Option value="disarmed">Disarmed</Option>
 						<Option value="exitDelay">Exit Delay</Option>
-						<Option value="armed">Armed</Option>
+						<Option value="armedStay">Armed Stay</Option>
+						<Option value="armedAway">Armed Away</Option>
 						<Option value="entryDelay">Entry Delay</Option>
 						<Option value="tripped">Tripped</Option>						
 					</List>
@@ -149,7 +150,7 @@
 						<Option value="none">None</Option>
 						<Option value="fire">Fire</Option>
 						<Option value="ambulance">Ambulance</Option>
-						<Option value="panic">Police</Option>
+						<Option value="panic">Panic/Police</Option>
 						<Option value="duress">Duress</Option>						
 					</List>
 				</ValueType>
