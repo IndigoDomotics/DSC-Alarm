@@ -23,6 +23,7 @@ import time
 from datetime import datetime
 import logging
 import serial
+from uno_tpi import UnoTpiClient, UnoTpiError
 try:
     import indigo
 except ImportError:
@@ -119,6 +120,8 @@ class Plugin(indigo.PluginBase):
 		self.repeatAlarmTripped = False
 		self.isPortOpen = False
 		self.useSerial = False
+		self.useUnoTpi = False
+		self.uno = None
 		self.txCmdList = []
 		self.closeTheseZonesList = []
 		self.currentHoldRetryTime = kHoldRetryTimeMinutes
@@ -715,7 +718,7 @@ class Plugin(indigo.PluginBase):
 				errorMsgDict['TwoDS_Port'] = "Enter a valid port number, default 4025."
 				wasError = True
 			if not (valuesDict['TwoDS_Password']):
-				errorMsgDict['TwoDS_Password'] = "Enter the password for the Envisalink."
+				errorMsgDict['TwoDS_Password'] = "Enter the password for the EyezOn interface."
 				wasError = True
 
 		if not (valuesDict['code'].isdigit()):
@@ -898,9 +901,13 @@ class Plugin(indigo.PluginBase):
 				self.createVariables = False
 
 			self.useSerial = False
+			self.useUnoTpi = False
 			if valuesDict.get('configInterface', 'twods') == 'serial':
 				# using older serial port interface IT-100 or similar
 				self.useSerial = True
+			elif valuesDict.get('configInterface', 'twods') == 'uno':
+				# using EyezOn UNO native TPI on TCP port 4025
+				self.useUnoTpi = True
 
 			self.configKeepTimeSynced = valuesDict.get('syncTime', True)
 			self.configUseCustomIcons = valuesDict.get('customStateIcons', True)
@@ -946,6 +953,12 @@ class Plugin(indigo.PluginBase):
 		return calcSum
 
 	def closePort(self):
+		if self.uno is not None:
+			try:
+				self.uno.close()
+			except Exception:
+				pass
+			self.uno = None
 		if self.port is None:
 			return
 		if self.port.isOpen() is True:
@@ -954,6 +967,23 @@ class Plugin(indigo.PluginBase):
 
 	def openPort(self):
 		self.closePort()
+		if self.useUnoTpi is True:
+			adr = f"{self.pluginPrefs['TwoDS_Address']}:{int(float(self.pluginPrefs.get('TwoDS_Port', 4025)))}"
+			self.logger.info(f"Initializing UNO TPI communication at address: {adr}")
+			try:
+				self.uno = UnoTpiClient(
+					self.pluginPrefs['TwoDS_Address'],
+					self.pluginPrefs['TwoDS_Password'],
+					int(float(self.pluginPrefs.get('TwoDS_Port', 4025))),
+					logger=self.logger
+				)
+				self.uno.connect()
+			except Exception as err:
+				self.logger.error(f"Error opening UNO TPI socket: {str(err)}")
+				self.uno = None
+				return False
+			self.logger.info("UNO TPI communication established")
+			return True
 		if self.useSerial is False:
 			#adr = self.pluginPrefs['TwoDS_Address'] + ':4025'
 			adr = f"{self.pluginPrefs['TwoDS_Address']}:{int(float(self.pluginPrefs['TwoDS_Port']))}"
@@ -1974,6 +2004,191 @@ class Plugin(indigo.PluginBase):
 
 
 	######################################################################################
+	# UNO TPI support
+	######################################################################################
+
+	def sendUnoCommandFromDsc(self, data):
+		"""Map the plugin's existing DSC command queue onto UNO TPI commands.
+
+		This keeps the Indigo action methods largely unchanged while allowing the
+		UNO backend to use native UNO commands. Unsupported DSC keypad passthrough
+		commands are logged and ignored instead of being sent to the UNO.
+		"""
+		if not self.uno:
+			raise UnoTpiError("UNO TPI client is not connected")
+
+		data = str(data)
+		self.logger.threaddebug(f"UNO command mapper received DSC-style command: {data}")
+
+		if data == '000':
+			self.uno.poll()
+		elif data == '001':
+			self.uno.request_initial_state_dump()
+		elif data.startswith('030') and len(data) >= 4:
+			self.uno.away_arm_partition(int(data[3]))
+		elif data.startswith('031') and len(data) >= 4:
+			self.uno.stay_arm_partition(int(data[3]))
+		elif data.startswith('040') and len(data) >= 5:
+			self.uno.disarm_partition(int(data[3]), data[4:])
+		elif data.startswith('010'):
+			self.logger.debug("Ignoring DSC time-sync command for UNO TPI.")
+		elif data.startswith('071'):
+			self.sendUnoKeystringFromDsc(data)
+		elif data.startswith('060'):
+			self.logger.warning("Panic alarm action is not yet mapped for UNO TPI.")
+		else:
+			self.logger.warning(f"DSC command {data} is not yet mapped for UNO TPI.")
+
+	def sendUnoKeystringFromDsc(self, data):
+		"""Best-effort mapping for DSC 071 virtual-keypad commands used by this plugin."""
+		m = re.match(r'^071([1-8])\*1(\d{2,3})#$', data)
+		if m:
+			self.uno.bypass_zone(int(m.group(2)))
+			return
+		m = re.match(r'^071([1-8])(\d{2,3})$', data)
+		if m:
+			# Used by forced-arm routines after they enter bypass mode.
+			self.uno.bypass_zone(int(m.group(2)))
+			return
+		m = re.match(r'^071([1-8])\*100#$', data)
+		if m:
+			partition = m.group(1)
+			self.logger.warning(f"UNO TPI has no implemented 'cancel all bypasses' mapping for partition {partition}; command ignored.")
+			return
+		if re.match(r'^071[1-8]\*1$', data) or re.match(r'^071[1-8]1#$', data):
+			# DSC-only begin/end bypass mode commands; direct UNO bypass commands do not need them.
+			return
+		self.logger.warning(f"DSC virtual-keypad command {data} is not mapped for UNO TPI.")
+
+	def handleUnoEvent(self, event):
+		if event.kind == 'ack':
+			code = event.data.get('code')
+			cmd = event.data.get('cmd')
+			if code:
+				self.logger.warning(f"UNO TPI command {cmd} returned code {code}.")
+			return
+
+		if event.kind == 'host':
+			self.logger.info(f"Connected to UNO {event.data.get('type', '')} firmware {event.data.get('version', '')}.")
+			return
+
+		if event.kind == 'zones':
+			for zone, is_open in event.data.items():
+				if zone in self.zoneList:
+					self.updateZoneState(zone, kZoneStateOpen if is_open else kZoneStateClosed)
+			return
+
+		if event.kind == 'bypass':
+			for zone, is_bypassed in event.data.items():
+				if zone in self.zoneList:
+					self.updateZoneBypass(zone, kZoneBypassYes if is_bypassed else kZoneBypassNo)
+			return
+
+		if event.kind == 'partitions':
+			for partition, state in event.data.items():
+				self.handleUnoPartitionState(partition, state)
+			return
+
+		if event.kind == 'troubles':
+			for partition, troubles in event.data.items():
+				if partition in self.keypadList:
+					self.updateKeypad(partition, 'LEDTrouble', 'on' if troubles else 'off')
+					if troubles:
+						self.logger.warning(f"UNO trouble on partition {partition}: {', '.join(troubles)}")
+			return
+
+		if event.kind == 'zone_temperatures':
+			for sensor, temp in event.data.items():
+				if temp is not None and sensor in self.tempList:
+					self.updateSensorTemp(sensor, 'inside', temp)
+			return
+
+		if event.kind == 'partition_temperatures':
+			return
+
+		if event.kind == 'keypad_one_time_sound':
+			self.logger.threaddebug(
+				f"UNO keypad one-time sound: partition/keypad={event.data.get('partition_or_keypad')}, "
+				f"sound={event.data.get('sound')} ({event.data.get('sound_code')}), "
+				f"parameter={event.data.get('parameter')}, raw=%{event.raw_cmd},{event.raw_data}$"
+			)
+			return
+
+		if event.kind == 'keypad_persistent_sound':
+			self.logger.threaddebug(
+				f"UNO keypad persistent sound: partition/keypad={event.data.get('partition_or_keypad')}, "
+				f"sound_code={event.data.get('sound_code')}, state={event.data.get('state')}, "
+				f"pattern/priority={event.data.get('pattern_or_priority')}, raw=%{event.raw_cmd},{event.raw_data}$"
+			)
+			return
+
+		if event.kind == 'partition_chime':
+			self.logger.threaddebug(
+				f"UNO partition chime: partition={event.data.get('partition')}, "
+				f"state={event.data.get('state')}, raw=%{event.raw_cmd},{event.raw_data}$"
+			)
+			return
+
+		if event.kind == 'cid':
+			self.logger.debug(f"UNO Contact ID event: {event.data.get('raw')}")
+			return
+
+		if event.kind == 'unknown':
+			self.logger.debug(f"Unknown UNO TPI frame %{event.raw_cmd},{event.raw_data}$")
+
+	def handleUnoPartitionState(self, partition, state):
+		if partition not in self.keypadList:
+			return
+		try:
+			dev = indigo.devices[self.keypadList[partition]]
+		except Exception:
+			dev = None
+
+		if state == 'ready':
+			self.updateKeypad(partition, 'state', kAlarmStateDisarmed)
+			self.updateKeypad(partition, 'ArmedState', kAlarmArmedStateDisarmed)
+			self.updateKeypad(partition, 'ReadyState', kReadyStateTrue)
+			self.updateKeypad(partition, 'LEDReady', 'on')
+			self.updateKeypad(partition, 'LEDArmed', 'off')
+		elif state == 'readyBypassed':
+			self.updateKeypad(partition, 'state', kAlarmStateDisarmed)
+			self.updateKeypad(partition, 'ArmedState', kAlarmArmedStateDisarmed)
+			self.updateKeypad(partition, 'ReadyState', kReadyStateTrue)
+			self.updateKeypad(partition, 'LEDReady', 'on')
+			self.updateKeypad(partition, 'LEDArmed', 'off')
+			self.updateKeypad(partition, 'LEDBypass', 'on')
+		elif state == 'notReady':
+			self.updateKeypad(partition, 'ReadyState', kReadyStateFalse)
+			self.updateKeypad(partition, 'LEDReady', 'off')
+		elif state == 'armedStay':
+			self.updateKeypad(partition, 'state', kAlarmStateArmedStay)
+			self.updateKeypad(partition, 'ArmedState', kAlarmArmedStateStay)
+			self.updateKeypad(partition, 'ReadyState', kReadyStateFalse)
+			self.updateKeypad(partition, 'LEDReady', 'off')
+			self.updateKeypad(partition, 'LEDArmed', 'on')
+		elif state in ('armedAway', 'armedAwayNoEntryDelay'):
+			self.updateKeypad(partition, 'state', kAlarmStateArmedAway)
+			self.updateKeypad(partition, 'ArmedState', kAlarmArmedStateAway)
+			self.updateKeypad(partition, 'ReadyState', kReadyStateFalse)
+			self.updateKeypad(partition, 'LEDReady', 'off')
+			self.updateKeypad(partition, 'LEDArmed', 'on')
+		elif state == 'exitDelay':
+			self.updateKeypad(partition, 'state', kAlarmStateExitDelay)
+		elif state == 'entryDelay':
+			self.updateKeypad(partition, 'state', kAlarmStateEntryDelay)
+		elif state == 'alarm':
+			self.updateKeypad(partition, 'state', kAlarmStateTripped)
+			if self.repeatAlarmTripped is False:
+				self.triggerEvent('eventAlarmTripped')
+				self.speak('speakTextTripped')
+			self.repeatAlarmTripped = True
+			self.repeatAlarmTrippedNext = self.timeNow + 12
+		else:
+			self.logger.debug(f"UNO partition {partition} state {state}")
+
+
+
+	######################################################################################
 	# Indigo Device State Updating
 	######################################################################################
 
@@ -2382,7 +2597,18 @@ class Plugin(indigo.PluginBase):
 
 			elif self.state == self.States.BOTH_INIT:
 				if self.openPort() is True:
-					if self.useSerial is False:
+					if self.useUnoTpi is True:
+						self.nextPingTime = self.timeNow + kPingInterval
+						try:
+							self.uno.request_host_information()
+							self.uno.request_initial_state_dump()
+						except Exception as err:
+							self.logger.error(f"UNO TPI initialization error: {str(err)}")
+							self.state = self.States.HOLD_RETRY
+						else:
+							self.logger.debug("UNO TPI initialization complete, starting normal operation.")
+							self.state = self.States.BOTH_POLL
+					elif self.useSerial is False:
 						self.state = self.States.SO_CONNECT
 						self.sleep(1)
 
@@ -2470,6 +2696,21 @@ class Plugin(indigo.PluginBase):
 			elif self.state == self.States.BOTH_POLL:
 				if self.configRead is False:
 					self.state = self.States.STARTUP
+				elif self.useUnoTpi is True:
+					try:
+						if self.timeNow > self.nextPingTime:
+							self.uno.poll()
+							self.nextPingTime = self.timeNow + kPingInterval
+						while self.txCmdList:
+							(cmdType, data) = self.txCmdList[0]
+							if cmdType == kCmdNormal:
+								self.sendUnoCommandFromDsc(data)
+							del self.txCmdList[0]
+						for event in self.uno.read_events():
+							self.handleUnoEvent(event)
+					except Exception as err:
+						self.logger.error(f"UNO TPI connection error: {str(err)}. Trying to re-initialize.")
+						self.state = self.States.BOTH_INIT
 				else:
 
 					if (self.useSerial is False) and (self.timeNow > self.nextPingTime):
