@@ -11,7 +11,8 @@
 		<Label>Select your Interface:</Label>
 		<List>
 			<Option value="serial">IT-100 or PC-5401</Option>
-			<Option value="twods">Envisalink 2DS, 3 or 4</Option>
+			<Option value="twods">EyezOn Envisalink 2DS, 3 or 4 / DSC PowerSeries</Option>
+			<Option value="uno">EyezOn UNO panel / UNO TPI</Option>
 		</List>
 	</Field>
 
@@ -21,27 +22,27 @@
 		<List class="indigo.serialPorts" filter="indigo.ignoreBluetooth" />
 	</Field>
 
-	<!-- Password specific settings -->
+	<!-- EyezOn IP interface settings -->
 
-	<Field id="TwoDS_Address" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods">
+	<Field id="TwoDS_Address" type="textfield">
 		<Label>IP Address:</Label>
 	</Field>
-	<Field id="TwoDS_AddressLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>(i.e. envisalink or 192.168.1.50; fixed IP is preferred)</Label>
+	<Field id="TwoDS_AddressLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>(i.e. envisalink, UNO hostname, or 192.168.1.50; fixed IP is preferred)</Label>
 	</Field>
 
-	<Field id="TwoDS_Port" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods" defaultValue="4025">
+	<Field id="TwoDS_Port" type="textfield" defaultValue="4025">
 		<Label>Port:</Label>
 	</Field>
-	<Field id="TwoDS_PortLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>(default port number = 4025)</Label>
+	<Field id="TwoDS_PortLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>(default: Envisalink 1514; UNO TPI 4025)</Label>
 	</Field>
 
-	<Field id="TwoDS_Password" type="textfield" visibleBindingId="configInterface" visibleBindingValue="twods" secure="true">
+	<Field id="TwoDS_Password" type="textfield" secure="true">
 		<Label>Password:</Label>
 	</Field>
-	<Field id="snmpCommunityLabel" type="label" visibleBindingId="configInterface" visibleBindingValue="twods" fontColor="darkgray" fontSize="small" alignWithControl="true">
-		<Label>(default = user; max. 6 ASCII digits; except EVL-4 allows 10 digits)</Label>
+	<Field id="snmpCommunityLabel" type="label" fontColor="darkgray" fontSize="small" alignWithControl="true">
+		<Label>(Envisalink password or UNO local-page password)</Label>
 	</Field>
 
 
